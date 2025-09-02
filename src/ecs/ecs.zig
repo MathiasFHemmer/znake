@@ -1,5 +1,6 @@
 const std = @import("std");
 const SparseSet = @import("sparse_set.zig").SparseSet;
+const AssetManager = @import("../asset_manager/asset_manager.zig").AssetManager;
 const logger = std.log.scoped(.ECS);
 
 pub const Entity = u32;
@@ -9,6 +10,7 @@ pub fn ECS(comptime ComponentTypes: type) type {
         const Self = @This();
 
         allocator: std.mem.Allocator,
+        assetManager: AssetManager,
 
         next_entity: Entity,
 
@@ -42,9 +44,10 @@ pub fn ECS(comptime ComponentTypes: type) type {
             });
         };
 
-        pub fn init(allocator: std.mem.Allocator) Self {
+        pub fn init(allocator: std.mem.Allocator) !Self {
             var self: Self = undefined;
             self.allocator = allocator;
+            self.assetManager = try AssetManager.init(allocator);
             self.next_entity = 1;
 
             inline for (@typeInfo(ComponentTypes).@"struct".fields) |field| {
@@ -63,6 +66,8 @@ pub fn ECS(comptime ComponentTypes: type) type {
         }
 
         pub fn deinit(self: *Self) void {
+            self.assetManager.deinit();
+
             inline for (@typeInfo(ComponentTypes).@"struct".fields) |field| {
                 @field(self.componentStorage, field.name).deinit();
             }

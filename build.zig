@@ -1,5 +1,24 @@
 const std = @import("std");
 
+fn addFiles(b: *std.Build, exe: *std.Build.Step.Compile, folder: []const u8) !void {
+    var dir = try std.fs.cwd().openDir(folder, .{ .iterate = true });
+    var it = dir.iterate();
+
+    while (try it.next()) |file| {
+        const name = try std.fmt.allocPrint(b.allocator, "{s}/{s}", .{ folder, file.name });
+        std.debug.print("adding for embeding {s}\n", .{name});
+        switch (file.kind) {
+            .file => {
+                exe.root_module.addAnonymousImport(name, .{ .root_source_file = b.path(name) });
+            },
+            .directory => {
+                try addFiles(b, exe, name);
+            },
+            else => {},
+        }
+    }
+}
+
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
@@ -36,6 +55,10 @@ pub fn build(b: *std.Build) void {
         .name = "snake_zig",
         .root_module = exe_mod,
     });
+
+    addFiles(b, exe, "shaders") catch |err| {
+        std.debug.panic("{any}", .{err});
+    };
 
     b.installArtifact(exe);
 
