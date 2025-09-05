@@ -18,13 +18,10 @@ pub fn playerMove(world: *World, dt: f32) void {
         t.oldRotation = t.rotation;
         t.oldScale = t.scale;
 
-        var pos = &t.position;
+        var pos = t.position;
 
         t.rotation = rl.Quaternion.fromAxisAngle(.init(0, 1, 0), rot.a).normalize();
-        const dir = t.forward.rotateByQuaternion(t.rotation).multiply(vel).scale(dt);
-
-        pos.x += dir.x;
-        pos.y += dir.y;
-        pos.z += dir.z;
+        const dir = vel.rotateByQuaternion(t.rotation).scale(dt);
+        t.position = pos.add(dir);
     }
 }

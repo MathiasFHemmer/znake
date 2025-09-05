@@ -2,8 +2,12 @@ const Scene = @import("scene.zig").Scene;
 const rl = @import("raylib");
 
 pub const MenuScene = struct {
-    pub fn init() MenuScene {
-        return MenuScene{};
+    camera: *rl.Camera3D,
+
+    pub fn init(camera: *rl.Camera3D) MenuScene {
+        return MenuScene{
+            .camera = camera,
+        };
     }
 
     pub fn start(self: *MenuScene) !void {
@@ -14,7 +18,7 @@ pub const MenuScene = struct {
         _ = dt;
     }
     pub fn update(self: *MenuScene) void {
-        _ = self;
+        self.camera.update(.orbital);
     }
     pub fn render(self: *MenuScene, alphaDt: f32) !void {
         _ = self;
@@ -22,7 +26,9 @@ pub const MenuScene = struct {
     }
     pub fn renderUI(self: *MenuScene) !void {
         _ = self;
-        rl.drawText("PRESS SPACE TO PLAY", 100, 100, 20, .white);
+        const posY = @as(f32, @floatFromInt(rl.getScreenHeight())) / 2.0;
+        const posX = (@as(f32, @floatFromInt(rl.getScreenWidth())) / 2.0) - (@as(f32, @floatFromInt(rl.measureText("GET IN LOSER, WE GOT APPLES TO EAT!", 20))) / 2.0);
+        rl.drawText("GET IN LOSER, WE GOT APPLES TO EAT!", @intFromFloat(posX), @intFromFloat(posY), 20, .white);
     }
     pub fn exit(self: *MenuScene) void {
         _ = self;

@@ -6,23 +6,21 @@ const Components = @import("../components.zig");
 const WorldEnv = @import("../world.zig");
 const World = WorldEnv.World;
 
+//TODO:
+// Get some info about extrapolation/interpolation
+// https://kirbysayshi.com/2013/09/24/interpolated-physics-rendering.html
+
 pub fn drawMeshSystem(world: *World, alphaDt: f32) void {
     var query = world.query(struct { meshRender: Components.MeshRenderer, transform: Components.Transform }).sets;
     for (query.meshRender.dense.items, query.meshRender.entities.items) |*mesh, entity| {
         const trans = query.transform.getUnsafe(entity);
 
-        // Extrapolate position
-        const deltaPos = trans.position.subtract(trans.oldPosition);
-        const i_pos = trans.position.add(deltaPos.scale(alphaDt));
+        // Interpolate position
+        const finalPosition = (trans.position.scale(alphaDt)).add(trans.position.scale(1 - alphaDt));
 
-        // Extrapolate rotation
-        const rot = trans.rotation.multiply(trans.oldRotation.invert());
-        var ang: f32 = undefined;
-        var axis: rl.Vector3 = undefined;
-        rot.toAxisAngle(&axis, &ang);
-        const i_quaternion = trans.rotation.multiply(rl.Quaternion.fromAxisAngle(axis, ang));
-        _ = i_quaternion;
+        // Interpolate rotation
+        const rot = trans.oldRotation.nlerp(trans.rotation, 1 - @exp(-alphaDt));
 
-        mesh.drawMesh(i_pos, trans.scale, trans.oldRotation.nlerp(trans.rotation, alphaDt), trans.worldForward());
+        mesh.drawMesh(finalPosition, trans.scale, rot, trans.worldForward());
     }
 }

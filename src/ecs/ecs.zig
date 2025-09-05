@@ -5,12 +5,13 @@ const logger = std.log.scoped(.ECS);
 
 pub const Entity = u32;
 
-pub fn ECS(comptime ComponentTypes: type) type {
+pub fn ECS(comptime ComponentTypes: type, comptime State: type) type {
     return struct {
         const Self = @This();
 
         allocator: std.mem.Allocator,
         assetManager: AssetManager,
+        state: State,
 
         next_entity: Entity,
 

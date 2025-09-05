@@ -24,11 +24,11 @@ pub fn main() !void {
 
     var gameScene = try GameScene.init(&cam, gpa.allocator());
     var gameSceneWrapper = gameScene.asScene();
-    var menuScene = MenuScene.init();
+    var menuScene = MenuScene.init(&cam);
     var menuSceneWrapper = menuScene.asScene();
     var sceneManager = try SceneManager.init(&menuSceneWrapper);
 
-    const target_fps: f32 = 20.0;
+    const target_fps: f32 = 30.0;
     const dt: f32 = 1.0 / target_fps;
 
     var accumulator: f32 = 0;
