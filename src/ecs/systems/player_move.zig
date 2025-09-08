@@ -11,6 +11,7 @@ const math = @import("../../math/math.zig");
 pub fn playerMove(world: *World, dt: f32) void {
     var query = world.query(struct { transform: Components.Transform, rigidbody: Components.Rigidbody, rotation: Components.Rotation }).sets;
     for (query.transform.dense.items, query.transform.entities.items) |*t, entity| {
+        if (entity != 1) continue;
         const vel = query.rigidbody.getUnsafe(entity).velocity;
         const rot = query.rotation.getUnsafe(entity);
 

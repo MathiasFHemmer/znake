@@ -7,6 +7,7 @@ const AssetManager = @import("asset_manager/asset_manager.zig").AssetManager;
 const AssetStore = @import("asset_manager/asset_store.zig").AssetStore;
 const Entity = @import("ecs/ecs.zig").Entity;
 const Components = @import("ecs/components.zig");
+const Apple = @import("ecs/entities/apple.zig");
 const Snake = @import("ecs/entities/snake.zig");
 const WorldEnv = @import("ecs/world.zig");
 const World = WorldEnv.World;
@@ -27,7 +28,7 @@ pub const GameScene = struct {
 
         var world = try World.init(allocator);
         try Snake.generateDefaults(allocator, &world.assetManager);
-
+        try Apple.generateDefaults(allocator, &world.assetManager);
         const snake = try Snake.create(&world, .init(1, 0, 1));
 
         return GameScene{
@@ -55,6 +56,7 @@ pub const GameScene = struct {
 
         Systems.gatherInput(&self.world);
         Systems.playerControllerUpdate(&self.world, self.snake, dt);
+        Systems.checkSpawnApple(&self.world, dt) catch @panic("A!");
         self.camera.target = self.world.getComponent(self.snake, Components.Transform).?.position;
         self.camera.position = self.world.getComponent(self.snake, Components.Transform).?.position.add(.init(0, 10, 0));
     }
