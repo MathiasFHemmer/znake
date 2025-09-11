@@ -24,7 +24,7 @@ pub const GameScene = struct {
 
     pub fn init(camera: *rl.Camera3D, allocator: std.mem.Allocator) !GameScene {
         rl.disableCursor();
-        camera.up = .init(0, 0, 1);
+        // camera.up = .init(0, 0, 1);
 
         var world = try World.init(allocator);
         try Snake.generateDefaults(allocator, &world.assetManager);
@@ -48,17 +48,18 @@ pub const GameScene = struct {
         _ = self;
     }
     pub fn fixedUpdate(self: *GameScene, dt: f32) void {
-        Systems.playerMove(&self.world, dt);
+        Systems.playerMove(&self.world, self.snake, dt);
+        Systems.checkAppleEat(self.snake, &self.world);
     }
     pub fn update(self: *GameScene) void {
-        self.camera.update(.third_person);
+        self.camera.update(.orbital);
         const dt = rl.getFrameTime();
 
         Systems.gatherInput(&self.world);
         Systems.playerControllerUpdate(&self.world, self.snake, dt);
         Systems.checkSpawnApple(&self.world, dt) catch @panic("A!");
-        self.camera.target = self.world.getComponent(self.snake, Components.Transform).?.position;
-        self.camera.position = self.world.getComponent(self.snake, Components.Transform).?.position.add(.init(0, 10, 0));
+        // self.camera.target = self.world.getComponent(self.snake, Components.Transform).?.position;
+        // self.camera.position = self.world.getComponent(self.snake, Components.Transform).?.position.add(.init(0, 10, 0));
     }
     pub fn render(self: *GameScene, alphaDt: f32) !void {
         rl.beginTextureMode(self.worldTarget);

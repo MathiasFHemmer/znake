@@ -49,6 +49,7 @@ pub fn ECS(comptime ComponentTypes: type, comptime State: type) type {
             var self: Self = undefined;
             self.allocator = allocator;
             self.assetManager = try AssetManager.init(allocator);
+            self.state = State.init();
             self.next_entity = 1;
 
             inline for (@typeInfo(ComponentTypes).@"struct".fields) |field| {

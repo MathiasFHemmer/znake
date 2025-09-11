@@ -35,6 +35,7 @@ pub fn create(world: *WorldEnv.World, position: rl.Vector3) !Entity {
     world.addComponent(entity, Components.Rotation.init(0));
     world.addComponent(entity, Components.Rigidbody.init());
     world.addComponent(entity, try Components.MeshRenderer.init(mesh, shader));
+    world.addComponent(entity, Components.Collider.init(.{ .square = .{ .position = .init(0, 0, 0), .length = .init(1, 2, 2) } }));
 
     return entity;
 }

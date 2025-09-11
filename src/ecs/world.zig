@@ -8,10 +8,19 @@ const WorldComponents = struct {
     Rigidbody: Components.Rigidbody,
     Rotation: Components.Rotation,
     MeshRenderer: Components.MeshRenderer,
+    Collider: Components.Collider,
 };
 
 const WorldState = struct {
     playerInput: Input,
+    applesAlive: u16,
+
+    pub fn init() WorldState {
+        return .{
+            .playerInput = Input.init(),
+            .applesAlive = 0,
+        };
+    }
 };
 
 pub const WorldAssetManager = AssetManager;
