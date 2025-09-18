@@ -12,4 +12,9 @@ pub fn gatherInput(world: *World) void {
     if (rl.isKeyDown(.s)) world.state.playerInput.movement.y = -1;
     if (rl.isKeyDown(.a)) world.state.playerInput.movement.x = 1;
     if (rl.isKeyDown(.d)) world.state.playerInput.movement.x = -1;
+
+    if (rl.isKeyPressed(.g)) world.state.meta.drawGismos = !world.state.meta.drawGismos;
+    if (rl.isKeyPressed(.h)) world.state.meta.drawColliders = !world.state.meta.drawColliders;
+
+    world.state.playerInput.slow = rl.isKeyDown(.left_shift);
 }

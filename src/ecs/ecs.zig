@@ -13,7 +13,8 @@ pub fn ECS(comptime ComponentTypes: type, comptime State: type) type {
         assetManager: AssetManager,
         state: State,
 
-        next_entity: Entity,
+        nextEntity: Entity,
+        entitiesToRemove: std.ArrayList(Entity),
 
         componentStorage: ComponentStorages,
 
@@ -50,7 +51,8 @@ pub fn ECS(comptime ComponentTypes: type, comptime State: type) type {
             self.allocator = allocator;
             self.assetManager = try AssetManager.init(allocator);
             self.state = State.init();
-            self.next_entity = 1;
+            self.nextEntity = 1;
+            self.entitiesToRemove = .init(allocator);
 
             inline for (@typeInfo(ComponentTypes).@"struct".fields) |field| {
                 const T = field.type;
@@ -69,6 +71,7 @@ pub fn ECS(comptime ComponentTypes: type, comptime State: type) type {
 
         pub fn deinit(self: *Self) void {
             self.assetManager.deinit();
+            self.entitiesToRemove.deinit();
 
             inline for (@typeInfo(ComponentTypes).@"struct".fields) |field| {
                 @field(self.componentStorage, field.name).deinit();
@@ -76,13 +79,16 @@ pub fn ECS(comptime ComponentTypes: type, comptime State: type) type {
         }
 
         pub fn createEntity(self: *Self) Entity {
-            const current = self.next_entity;
-            self.next_entity += 1;
+            logger.info("Creating new entity...", .{});
+            const current = self.nextEntity;
+            self.nextEntity += 1;
+            logger.info("Entity {any} created!", .{current});
             return current;
         }
 
         pub fn addComponent(self: *Self, entity: Entity, component: anytype) void {
             const T: type = @TypeOf(component);
+            logger.info("Adding component {any} to entity {any}...", .{ T, entity });
             inline for (@typeInfo(ComponentTypes).@"struct".fields) |field| {
                 if (field.type == T) {
                     @field(self.componentStorage, field.name).add(entity, component) catch {};
@@ -119,10 +125,23 @@ pub fn ECS(comptime ComponentTypes: type, comptime State: type) type {
             @compileError("Component type " ++ @typeName(T) ++ " not registered in ECS");
         }
 
+        pub fn markForRemoval(self: *Self, entity: Entity) void {
+            self.entitiesToRemove.append(entity) catch unreachable;
+        }
+
+        // This removes an entity and all its associated components.
+        // Do not use this inside a query!
         pub fn removeEntity(self: *Self, entity: Entity) void {
             inline for (@typeInfo(ComponentTypes).@"struct".fields) |field| {
                 @field(self.componentStorage, field.name).remove(entity);
             }
+        }
+
+        pub fn flushRemoval(self: *Self) void {
+            for (self.entitiesToRemove.items) |entity| {
+                self.removeEntity(entity);
+            }
+            self.entitiesToRemove.clearRetainingCapacity();
         }
 
         pub fn query(self: *Self, comptime Components: type) Query(Components) {

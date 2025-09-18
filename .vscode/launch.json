@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+    {
+        "name": "Zig: zig build run",
+        "type": "lldb", // Use "lldb" if you're on macOS
+        "request": "launch",
+        "program": "${workspaceFolder}/zig-out/bin/${workspaceFolderBasename}",
+        "args": [],
+        "cwd": "${workspaceFolder}",
+        "preLaunchTask": "zig: build",
+        "MIMode": "lldb",
+        "setupCommands": [
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            }
+        ]
+    }
+  ]
+}

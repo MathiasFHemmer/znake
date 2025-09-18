@@ -9,6 +9,7 @@ const Entity = @import("ecs/ecs.zig").Entity;
 const Components = @import("ecs/components.zig");
 const Apple = @import("ecs/entities/apple.zig");
 const Snake = @import("ecs/entities/snake.zig");
+const Spike = @import("ecs/entities/spike.zig");
 const WorldEnv = @import("ecs/world.zig");
 const World = WorldEnv.World;
 const Input = @import("input.zig").Input;
@@ -24,11 +25,12 @@ pub const GameScene = struct {
 
     pub fn init(camera: *rl.Camera3D, allocator: std.mem.Allocator) !GameScene {
         rl.disableCursor();
-        // camera.up = .init(0, 0, 1);
+        camera.up = .init(0, 0, 1);
 
         var world = try World.init(allocator);
         try Snake.generateDefaults(allocator, &world.assetManager);
         try Apple.generateDefaults(allocator, &world.assetManager);
+        try Spike.generateDefaults(allocator, &world.assetManager);
         const snake = try Snake.create(&world, .init(1, 0, 1));
 
         return GameScene{
@@ -58,8 +60,15 @@ pub const GameScene = struct {
         Systems.gatherInput(&self.world);
         Systems.playerControllerUpdate(&self.world, self.snake, dt);
         Systems.checkSpawnApple(&self.world, dt) catch @panic("A!");
-        // self.camera.target = self.world.getComponent(self.snake, Components.Transform).?.position;
-        // self.camera.position = self.world.getComponent(self.snake, Components.Transform).?.position.add(.init(0, 10, 0));
+        Systems.spikeSpawner(&self.world, dt) catch @panic("A!");
+
+        // const t = self.world.getComponent(self.snake, Components.Transform).?;
+        // const cameraPos = (t.position.scale(dt)).add(t.position.scale(1 - dt));
+        // self.camera.target = cameraPos;
+        // self.camera.position = cameraPos.add(.init(0, 10, 0));
+
+        self.camera.target = self.world.getComponent(self.snake, Components.Transform).?.position;
+        self.camera.position = self.world.getComponent(self.snake, Components.Transform).?.position.add(.init(0, 10, 0));
     }
     pub fn render(self: *GameScene, alphaDt: f32) !void {
         rl.beginTextureMode(self.worldTarget);
@@ -76,7 +85,8 @@ pub const GameScene = struct {
         rl.endShaderMode();
     }
     pub fn renderUI(self: *GameScene) !void {
-        _ = self;
+        // _ = self;
+        rl.drawText(rl.textFormat("Score: %1i", .{self.world.state.applesEaten}), 0, 50, 14, .white);
     }
     pub fn exit(self: *GameScene) void {
         _ = self;

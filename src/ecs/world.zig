@@ -11,14 +11,32 @@ const WorldComponents = struct {
     Collider: Components.Collider,
 };
 
+const Meta = struct {
+    drawColliders: bool,
+    drawGismos: bool,
+
+    pub fn init() Meta {
+        return .{
+            .drawColliders = false,
+            .drawGismos = false,
+        };
+    }
+};
+
 const WorldState = struct {
+    meta: Meta,
     playerInput: Input,
     applesAlive: u16,
+    applesEaten: u16,
+    spikes: u16,
 
     pub fn init() WorldState {
         return .{
             .playerInput = Input.init(),
             .applesAlive = 0,
+            .applesEaten = 0,
+            .spikes = 0,
+            .meta = Meta.init(),
         };
     }
 };

@@ -22,7 +22,7 @@ pub const MeshRenderer = struct {
         rl.unloadMaterial(self.material);
     }
 
-    pub fn drawMesh(self: *MeshRenderer, position: rl.Vector3, scale: rl.Vector3, rotation: rl.Quaternion, worldFoward: rl.Vector3) void {
+    pub fn drawMesh(self: *MeshRenderer, position: rl.Vector3, scale: rl.Vector3, rotation: rl.Quaternion) void {
         // Get transform matrix (rotation -> scale -> translation)
         const matScale = rl.Matrix.scale(scale.x, scale.y, scale.z);
         const matRotation = rotation.toMatrix();
@@ -38,6 +38,5 @@ pub const MeshRenderer = struct {
         // const color = self.tint;
         // const colorTint = rl.Color.white;
         self.meshHandle.draw(self.material, matTransform);
-        rl.drawLine3D(position, position.add(worldFoward.scale(2)), rl.Color.blue);
     }
 };
