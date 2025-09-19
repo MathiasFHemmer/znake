@@ -65,7 +65,7 @@ pub fn ECS(comptime ComponentTypes: type, comptime State: type) type {
 
         pub fn printRegistry() void {
             inline for (@typeInfo(ComponentTypes).@"struct".fields) |field| {
-                logger.info("Component [{s}] Type [{s}] active", .{ field.name, @typeName(field.type) });
+                logger.debug("Component [{s}] Type [{s}] active", .{ field.name, @typeName(field.type) });
             }
         }
 
@@ -79,16 +79,16 @@ pub fn ECS(comptime ComponentTypes: type, comptime State: type) type {
         }
 
         pub fn createEntity(self: *Self) Entity {
-            logger.info("Creating new entity...", .{});
+            logger.debug("Creating new entity...", .{});
             const current = self.nextEntity;
             self.nextEntity += 1;
-            logger.info("Entity {any} created!", .{current});
+            logger.debug("Entity {any} created!", .{current});
             return current;
         }
 
         pub fn addComponent(self: *Self, entity: Entity, component: anytype) void {
             const T: type = @TypeOf(component);
-            logger.info("Adding component {any} to entity {any}...", .{ T, entity });
+            logger.debug("Adding component {any} to entity {any}...", .{ T, entity });
             inline for (@typeInfo(ComponentTypes).@"struct".fields) |field| {
                 if (field.type == T) {
                     @field(self.componentStorage, field.name).add(entity, component) catch {};

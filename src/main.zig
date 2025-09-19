@@ -4,11 +4,16 @@ const SceneManager = @import("sceneManager.zig").SceneManager;
 const GameScene = @import("game.zig").GameScene;
 const MenuScene = @import("menu.zig").MenuScene;
 
+pub const std_options: std.Options = .{
+    // Set the log level to info
+    .log_level = .info,
+};
+
 pub fn main() !void {
     const screenWidth = 800;
     const screenHeight = 450;
 
-    rl.initWindow(screenWidth, screenHeight, "Snake Game");
+    rl.initWindow(screenWidth, screenHeight, "Snake Game (Does极)");
     defer rl.closeWindow();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

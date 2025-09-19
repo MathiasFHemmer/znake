@@ -15,7 +15,7 @@ pub fn SparseSet(comptime T: type) type {
         entities: std.ArrayList(Entity),
 
         pub fn init(allocator: std.mem.Allocator) SparseSet(T) {
-            logger.info("Initializing SparseSet({any})...", .{T});
+            logger.debug("Initializing SparseSet({any})...", .{T});
             return SparseSet(T){
                 .allocator = allocator,
                 .dense = .init(allocator),
@@ -25,26 +25,26 @@ pub fn SparseSet(comptime T: type) type {
         }
 
         pub fn print(self: *Self) void {
-            logger.info("SparseSet({any}):", .{T});
-            logger.info("Dense: ({any}):", .{self.dense.items.len + 1});
-            logger.info("Sparse:", .{});
+            logger.debug("SparseSet({any}):", .{T});
+            logger.debug("Dense: ({any}):", .{self.dense.items.len + 1});
+            logger.debug("Sparse:", .{});
             var it = self.sparse.keyIterator();
             while (it.next()) |key| {
-                logger.info("Entity({d}) at ({d}):", .{ key.*, self.sparse.get(key.*).? });
+                logger.debug("Entity({d}) at ({d}):", .{ key.*, self.sparse.get(key.*).? });
             }
 
-            logger.info("Entities: ({any}):", .{self.entities.items});
+            logger.debug("Entities: ({any}):", .{self.entities.items});
         }
 
         pub fn deinit(self: *Self) void {
-            logger.info("Deinitializing SparseSet({any})", .{T});
+            logger.debug("Deinitializing SparseSet({any})", .{T});
             self.dense.deinit();
             self.sparse.deinit();
             self.entities.deinit();
         }
 
         pub fn add(self: *Self, entity: Entity, data: T) !void {
-            logger.info("Adding data {any} to SparseSet on entity {any}", .{ entity, T });
+            logger.debug("Adding data {any} to SparseSet on entity {any}", .{ entity, T });
             const index: u32 = @intCast(self.dense.items.len);
             try self.dense.append(data);
             try self.entities.append(entity);
@@ -54,10 +54,10 @@ pub fn SparseSet(comptime T: type) type {
         // Gets a pointer to an Entity Component
         // Looks for the entity in the Sparse set first. If it exists, extract the index from the Sparse set and uses it as a key in the Dense set
         pub fn get(self: *Self, entity: Entity) ?*T {
-            self.print();
-            logger.info("Looking for component {any} of entity {any}", .{ T, entity });
+            // self.print();
+            logger.debug("Looking for component {any} of entity {any}", .{ T, entity });
             if (self.sparse.get(entity)) |index| {
-                logger.info("Entity {any} contains component at Dense({d})", .{ entity, index });
+                logger.debug("Entity {any} contains component at Dense({d})", .{ entity, index });
                 return &self.dense.items[index];
             }
             return null;
@@ -83,7 +83,7 @@ pub fn SparseSet(comptime T: type) type {
         }
 
         pub fn remove(self: *Self, entity: Entity) void {
-            logger.info("Removing componenet {any} from Entity({d})", .{ T, entity });
+            logger.debug("Removing componenet {any} from Entity({d})", .{ T, entity });
             const index = self.sparse.get(entity) orelse return;
             _ = self.sparse.remove(entity);
             const lastIndex = self.dense.items.len - 1;

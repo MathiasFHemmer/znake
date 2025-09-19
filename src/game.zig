@@ -50,6 +50,7 @@ pub const GameScene = struct {
         _ = self;
     }
     pub fn fixedUpdate(self: *GameScene, dt: f32) void {
+        Systems.checkCollisions(&self.world);
         Systems.checkAppleEat(self.snake, &self.world);
         Systems.playerMove(&self.world, self.snake, dt);
     }

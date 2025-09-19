@@ -31,7 +31,7 @@ pub const MeshStore = struct {
     }
 
     pub fn add(self: *Self, key: []const u8, mesh: rl.Mesh) !*rl.Mesh {
-        logger.info("Adding new Mesh to store", .{});
+        logger.debug("Adding new Mesh to store", .{});
         if (self.meshes.contains(key)) {
             std.debug.panic("Mesh {s} is already present on store!", .{key});
             return error.AssetKeyAlreadyExists;
@@ -43,9 +43,9 @@ pub const MeshStore = struct {
         });
         const newMesh = try self.get(key);
 
-        logger.info("Uploading new Mesh to GPU", .{});
+        logger.debug("Uploading new Mesh to GPU", .{});
         rl.uploadMesh(newMesh, false);
-        logger.info("New mesh {any} uploaded!", .{newMesh.vaoId});
+        logger.debug("New mesh {any} uploaded!", .{newMesh.vaoId});
         return newMesh;
     }
 

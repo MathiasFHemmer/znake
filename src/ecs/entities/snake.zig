@@ -33,7 +33,7 @@ pub fn create(world: *WorldEnv.World, position: rl.Vector3) !Entity {
 
     world.addComponent(entity, Components.Transform.init(position));
     world.addComponent(entity, Components.Rotation.init(0));
-    world.addComponent(entity, Components.Rigidbody.init());
+    world.addComponent(entity, Components.Rigidbody.init(10));
     world.addComponent(entity, try Components.MeshRenderer.init(mesh, shader));
     world.addComponent(entity, Components.Collider.init(.{ .sphere = .unit() }));
 
