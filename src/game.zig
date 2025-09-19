@@ -50,8 +50,8 @@ pub const GameScene = struct {
         _ = self;
     }
     pub fn fixedUpdate(self: *GameScene, dt: f32) void {
-        Systems.playerMove(&self.world, self.snake, dt);
         Systems.checkAppleEat(self.snake, &self.world);
+        Systems.playerMove(&self.world, self.snake, dt);
     }
     pub fn update(self: *GameScene) void {
         self.camera.update(.orbital);

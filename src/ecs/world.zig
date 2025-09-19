@@ -9,6 +9,8 @@ const WorldComponents = struct {
     Rotation: Components.Rotation,
     MeshRenderer: Components.MeshRenderer,
     Collider: Components.Collider,
+    TagApple: Components.TagApple,
+    TagSpike: Components.TagSpike,
 };
 
 const Meta = struct {

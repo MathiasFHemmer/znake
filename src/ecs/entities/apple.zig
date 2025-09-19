@@ -13,6 +13,7 @@ pub fn create(world: *WorldEnv.World, position: rl.Vector3) !Entity {
     world.addComponent(entity, Components.Transform.init(position));
     world.addComponent(entity, try Components.MeshRenderer.init(mesh, shader));
     world.addComponent(entity, Components.Collider.init(.{ .sphere = .unit() }));
+    world.addComponent(entity, Components.TagApple{});
 
     return entity;
 }

@@ -31,9 +31,18 @@ pub const Shape = union(ShapeType) {
     sphere: Sphere,
 };
 
-pub fn checkCollision(pos1: rl.Vector3, pos2: rl.Vector3, s1: Shape, s2: Shape) bool {
+pub const Manifest = struct { penetration: rl.Vector3 };
+
+pub fn checkCollision(pos1: rl.Vector3, pos2: rl.Vector3, s1: Shape, s2: Shape) ?Manifest {
     if (s1 == Shape.sphere and s2 == Shape.sphere) {
-        return pos1.subtract(pos2).lengthSqr() <= std.math.pow(f32, s1.sphere.radius + s2.sphere.radius, 2);
+        const len = pos1.subtract(pos2).length();
+        const radius = s1.sphere.radius + s2.sphere.radius;
+
+        if (len <= radius) {
+            return Manifest{
+                .penetration = pos1.subtract(pos2).normalize().scale(len - radius),
+            };
+        }
     }
-    return false;
+    return null;
 }
