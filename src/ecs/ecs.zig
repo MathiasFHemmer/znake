@@ -14,7 +14,7 @@ pub fn ECS(comptime ComponentTypes: type, comptime State: type) type {
         state: State,
 
         nextEntity: Entity,
-        entitiesToRemove: std.ArrayList(Entity),
+        entitiesToRemove: std.array_list.Aligned(Entity, null),
 
         componentStorage: ComponentStorages,
 
@@ -47,12 +47,7 @@ pub fn ECS(comptime ComponentTypes: type, comptime State: type) type {
         };
 
         pub fn init(allocator: std.mem.Allocator) !Self {
-            var self: Self = undefined;
-            self.allocator = allocator;
-            self.assetManager = try AssetManager.init(allocator);
-            self.state = State.init();
-            self.nextEntity = 1;
-            self.entitiesToRemove = .init(allocator);
+            var self: Self = .{ .allocator = allocator, .assetManager = try AssetManager.init(allocator), .state = State.init(), .nextEntity = 1, .entitiesToRemove = .empty, .componentStorage = undefined };
 
             inline for (@typeInfo(ComponentTypes).@"struct".fields) |field| {
                 const T = field.type;
@@ -71,7 +66,7 @@ pub fn ECS(comptime ComponentTypes: type, comptime State: type) type {
 
         pub fn deinit(self: *Self) void {
             self.assetManager.deinit();
-            self.entitiesToRemove.deinit();
+            self.entitiesToRemove.deinit(self.allocator);
 
             inline for (@typeInfo(ComponentTypes).@"struct".fields) |field| {
                 @field(self.componentStorage, field.name).deinit();
@@ -126,7 +121,7 @@ pub fn ECS(comptime ComponentTypes: type, comptime State: type) type {
         }
 
         pub fn markForRemoval(self: *Self, entity: Entity) void {
-            self.entitiesToRemove.append(entity) catch unreachable;
+            self.entitiesToRemove.append(self.allocator, entity) catch unreachable;
         }
 
         // This removes an entity and all its associated components.

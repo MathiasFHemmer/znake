@@ -8,19 +8,19 @@ pub fn SparseSet(comptime T: type) type {
 
         allocator: std.mem.Allocator,
         // Contains the Data itself
-        dense: std.ArrayList(T),
+        dense: std.array_list.Aligned(T, null),
+        // Contains all entities that has this component
+        entities: std.array_list.Aligned(Entity, null),
         // Maps the Entity to the index of the Dense array
         sparse: std.AutoHashMap(Entity, u32),
-        // Contains all entities that has this component
-        entities: std.ArrayList(Entity),
 
         pub fn init(allocator: std.mem.Allocator) SparseSet(T) {
             logger.debug("Initializing SparseSet({any})...", .{T});
             return SparseSet(T){
                 .allocator = allocator,
-                .dense = .init(allocator),
+                .dense = .empty,
+                .entities = .empty,
                 .sparse = .init(allocator),
-                .entities = .init(allocator),
             };
         }
 
@@ -38,16 +38,16 @@ pub fn SparseSet(comptime T: type) type {
 
         pub fn deinit(self: *Self) void {
             logger.debug("Deinitializing SparseSet({any})", .{T});
-            self.dense.deinit();
+            self.dense.deinit(self.allocator);
+            self.entities.deinit(self.allocator);
             self.sparse.deinit();
-            self.entities.deinit();
         }
 
         pub fn add(self: *Self, entity: Entity, data: T) !void {
             logger.debug("Adding data {any} to SparseSet on entity {any}", .{ entity, T });
             const index: u32 = @intCast(self.dense.items.len);
-            try self.dense.append(data);
-            try self.entities.append(entity);
+            try self.dense.append(self.allocator, data);
+            try self.entities.append(self.allocator, entity);
             try self.sparse.put(entity, index);
         }
 

@@ -1,1 +1,1 @@
-pub const TagApple = struct {};
+pub const TagApple = struct { a: u8 };

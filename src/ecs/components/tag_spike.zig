@@ -1,1 +1,1 @@
-pub const TagSpike = struct {};
+pub const TagSpike = struct { a: u8 };
