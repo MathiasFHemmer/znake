@@ -2,7 +2,6 @@ const std = @import("std");
 const math = @import("math/math.zig");
 const rl = @import("raylib");
 const Scene = @import("scene.zig").Scene;
-const ECS = @import("ecs/ecs.zig").ECS;
 const AssetManager = @import("asset_manager/asset_manager.zig").AssetManager;
 const AssetStore = @import("asset_manager/asset_store.zig").AssetStore;
 const Entity = @import("ecs/ecs.zig").Entity;
@@ -62,6 +61,14 @@ pub const GameScene = struct {
         Systems.playerControllerUpdate(&self.world, self.snake, dt);
         Systems.checkSpawnApple(&self.world, dt) catch @panic("A!");
         Systems.spikeSpawner(&self.world, dt) catch @panic("A!");
+
+        if (rl.isMouseButtonPressed(.right)) {
+            const file: ?std.fs.File = std.fs.cwd().createFile("entity", .{ .read = true }) catch null;
+            if (file) |f| {
+                var writer = f.writer(&.{});
+                self.world.serialize(self.snake, &writer.interface) catch unreachable;
+            }
+        }
 
         // const t = self.world.getComponent(self.snake, Components.Transform).?;
         // const cameraPos = (t.position.scale(dt)).add(t.position.scale(1 - dt));

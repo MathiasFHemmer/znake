@@ -2,11 +2,21 @@ const std = @import("std");
 const rl = @import("raylib");
 const Transform = @import("transform.zig").Transform;
 
+pub const MeshRendererSer = struct {
+    tint: rl.Color,
+};
+
 pub const MeshRenderer = struct {
     tint: rl.Color,
     material: rl.Material,
     meshHandle: *rl.Mesh,
     shaderHandle: *rl.Shader,
+
+    pub fn serializable(self: *MeshRenderer) MeshRendererSer {
+        return .{
+            .tint = self.tint,
+        };
+    }
 
     pub fn init(meshHandle: *rl.Mesh, shaderHandle: *rl.Shader) !MeshRenderer {
         return MeshRenderer{

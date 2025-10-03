@@ -1,0 +1,76 @@
+{"id":1,"components":{"ecs.components.transform.Transform":{
+  "position": {
+    "x": 5.596852779388428,
+    "y": 0,
+    "z": 6.848512172698975
+  },
+  "rotation": {
+    "x": -0,
+    "y": -0.7080715298652649,
+    "z": -0,
+    "w": 0.7061407566070557
+  },
+  "scale": {
+    "x": 1,
+    "y": 1,
+    "z": 1
+  },
+  "oldPosition": {
+    "x": 5.763460636138916,
+    "y": 0,
+    "z": 6.8489670753479
+  },
+  "oldRotation": {
+    "x": -0,
+    "y": -0.6467497944831848,
+    "z": -0,
+    "w": 0.762702226638794
+  },
+  "oldScale": {
+    "x": 1,
+    "y": 1,
+    "z": 1
+  },
+  "forward": {
+    "x": 0,
+    "y": 0,
+    "z": 1
+  },
+  "right": {
+    "x": 1,
+    "y": 0,
+    "z": 0
+  },
+  "up": {
+    "x": 0,
+    "y": 1,
+    "z": 0
+  }
+},"ecs.components.rigidbody.Rigidbody":{
+  "velocity": {
+    "x": -0.000000008778870963510599,
+    "y": 0,
+    "z": 4.9984965324401855
+  },
+  "mass": 10
+},"ecs.components.rotation.Rotation":{
+  "a": -1.6486022472381592
+},"ecs.components.mesh_renderer.MeshRenderer":{
+  "tint": {
+    "r": 255,
+    "g": 255,
+    "b": 255,
+    "a": 255
+  }
+},"ecs.components.collider.Collider":{
+  "position": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+  },
+  "shape": {
+    "sphere": {
+      "radius": 0.5
+    }
+  }
+}}}

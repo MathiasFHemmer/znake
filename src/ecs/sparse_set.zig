@@ -82,6 +82,28 @@ pub fn SparseSet(comptime T: type) type {
             return self.entities.items;
         }
 
+        pub fn canSerialize(self: *Self, entity: Entity) bool {
+            if (self.sparse.get(entity)) |_| return true;
+            return false;
+        }
+
+        pub fn serialize(self: *Self, entity: Entity, writer: *std.io.Writer) !void {
+            if (self.sparse.get(entity)) |idx| {
+                const item = &self.dense.items[idx];
+                try std.json.Stringify.value(@typeName(T), .{}, writer);
+                try writer.writeByte(':');
+                if (@hasDecl(@TypeOf(item.*), "serializable")) {
+                    try std.json.Stringify.value(item.serializable(), .{
+                        .whitespace = .indent_2,
+                    }, writer);
+                } else {
+                    try std.json.Stringify.value(item, .{
+                        .whitespace = .indent_2,
+                    }, writer);
+                }
+            }
+        }
+
         pub fn remove(self: *Self, entity: Entity) void {
             logger.debug("Removing componenet {any} from Entity({d})", .{ T, entity });
             const index = self.sparse.get(entity) orelse return;

@@ -18,10 +18,6 @@ pub fn playerControllerUpdate(world: *World, player: Entity, dt: f32) void {
     const rotation = world.getComponent(player, Components.Rotation).?;
     const rb = world.getComponent(player, Components.Rigidbody).?;
 
-    if (rl.isMouseButtonPressed(.left)) {
-        world.removeEntity(player);
-    }
-
     const requestedMovement = world.state.playerInput.movement;
     rotation.a += requestedMovement.x * rotationSpeed * dt;
     const targetVelocity = rl.Vector3.init(0, 0, requestedMovement.y * if (world.state.playerInput.slow == true) slowMovementSpeed else movementSpeed);

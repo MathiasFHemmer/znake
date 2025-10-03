@@ -139,6 +139,34 @@ pub fn ECS(comptime ComponentTypes: type, comptime State: type) type {
             self.entitiesToRemove.clearRetainingCapacity();
         }
 
+        //
+        // Serialization
+        //
+        pub fn serialize(self: *Self, entity: Entity, writer: *std.io.Writer) !void {
+            try writer.writeByte('{');
+            try std.json.Stringify.value("id", .{}, writer);
+            try writer.writeByte(':');
+            try std.json.Stringify.value(entity, .{}, writer);
+            try writer.writeByte(',');
+            try std.json.Stringify.value("components", .{}, writer);
+            try writer.writeByte(':');
+            try writer.writeByte('{');
+
+            const fields = @typeInfo(ComponentTypes).@"struct".fields;
+            var first = true;
+            inline for (fields) |field| {
+                var storage = @field(self.componentStorage, field.name);
+                if (storage.canSerialize(entity)) {
+                    if (!first) try writer.writeByte(',');
+                    try storage.serialize(entity, writer);
+                    first = false;
+                }
+            }
+            try writer.writeByte('}');
+            try writer.writeByte('}');
+        }
+        // ------------
+
         pub fn query(self: *Self, comptime Components: type) Query(Components) {
             return Query(Components).init(self);
         }

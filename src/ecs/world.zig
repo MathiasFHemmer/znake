@@ -1,4 +1,5 @@
-const ECS = @import("ecs.zig").ECS;
+// const ECS = @import("ecs.zig").ECS;
+const ECS = @import("zecs").ECS;
 const Components = @import("components.zig");
 const AssetManager = @import("../asset_manager/asset_manager.zig").AssetManager;
 const Input = @import("../input.zig").Input;
@@ -44,4 +45,4 @@ const WorldState = struct {
 };
 
 pub const WorldAssetManager = AssetManager;
-pub const World = ECS(WorldComponents, WorldState);
+pub const World = ECS(WorldComponents, WorldState, WorldAssetManager);

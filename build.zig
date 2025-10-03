@@ -19,20 +19,16 @@ fn addFiles(b: *std.Build, exe: *std.Build.Step.Compile, folder: []const u8) !vo
     }
 }
 
-// Although this function looks imperative, note that its job is to
-// declaratively construct a build graph that will be executed by an external
-// runner.
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib_mod = b.createModule(.{
-        .root_source_file = b.path("src/root.zig"),
+    const raylib_dep = b.dependency("raylib_zig", .{
         .target = target,
         .optimize = optimize,
     });
 
-    const raylib_dep = b.dependency("raylib_zig", .{
+    const zecs_dep = b.dependency("zecs", .{
         .target = target,
         .optimize = optimize,
     });
@@ -40,6 +36,8 @@ pub fn build(b: *std.Build) void {
     const raylib = raylib_dep.module("raylib"); // main raylib module
     const raygui = raylib_dep.module("raygui"); // raygui module
     const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
+
+    const zecs = zecs_dep.module("zecs");
 
     const exe_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
@@ -49,7 +47,7 @@ pub fn build(b: *std.Build) void {
     exe_mod.linkLibrary(raylib_artifact);
     exe_mod.addImport("raylib", raylib);
     exe_mod.addImport("raygui", raygui);
-    exe_mod.addImport("snake_zig_lib", lib_mod);
+    exe_mod.addImport("zecs", zecs);
 
     const exe = b.addExecutable(.{
         .name = "snake_zig",
