@@ -15,14 +15,13 @@ pub const MeshRenderer = struct {
     shaderHandle: AssetHandle,
 
     pub fn serialize(self: MeshRenderer, writer: *std.io.Writer) !void {
-        try writer.writeInt(u32, self.meshHandle.len, .little);
         return writer.writeAll(&self.meshHandle.key);
     }
 
     pub fn deserialize(reader: *std.io.Reader, allocator: std.mem.Allocator) !MeshRenderer {
         _ = allocator;
-        const len = try reader.takeInt(u32, .little);
-        const key = try reader.take(len);
+        //const len = try reader.takeInt(u32, .little);
+        const key = try reader.take(64);
         return MeshRenderer{
             .tint = rl.Color.white,
             .material = try rl.loadMaterialDefault(),
