@@ -69,8 +69,8 @@ pub const GameScene = struct {
             if (file) |f| {
                 logger.info("Saving world data...", .{});
                 self.world.printRegistry();
-                var buffer: [4096]u8 = undefined;
-                var writer = f.writer(&buffer);
+                //var buffer: [4096]u8 = undefined;
+                var writer = f.writer(&.{});
                 self.world.serialize(&writer.interface, version) catch unreachable;
                 writer.end() catch unreachable;
                 logger.info("Save complete!", .{});
@@ -79,11 +79,10 @@ pub const GameScene = struct {
 
         if (rl.isMouseButtonPressed(.left)) {
             const file: ?std.fs.File = std.fs.cwd().openFile("entity", .{}) catch null;
-            logger.info("[{any}]", .{file});
             const version = std.SemanticVersion.parse("1.0.0") catch unreachable;
             if (file) |f| {
                 const stats = f.stat();
-                logger.info("File stats: {any}", .{stats});
+                logger.debug("Save File stats: {any}", .{stats});
 
                 var buffer: [4096]u8 = undefined;
                 var reader = f.reader(&buffer);
