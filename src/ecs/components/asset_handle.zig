@@ -1,6 +1,12 @@
+const std = @import("std");
+const Writer = std.io.Writer;
+
 pub const MAX_ASSET_KEY_LEN = 64;
 
 pub const AssetHandle = struct {
+    pub const Error = error{
+        InvalidKeyLength,
+    };
     key: [MAX_ASSET_KEY_LEN]u8 = undefined,
     len: u8 = 0,
 
@@ -17,26 +23,19 @@ pub const AssetHandle = struct {
         _ = self;
     }
 
-    pub fn serialize(self: AssetHandle, writer: anytype) !void {
+    pub fn serialize(self: AssetHandle, writer: *std.io.Writer) !void {
         try writer.writeInt(u8, self.len, .little);
         try writer.writeAll(self.key[0..self.len]);
-        // optionally pad to fixed size for alignment
-        const padding = MAX_ASSET_KEY_LEN - self.len;
-        if (padding > 0) try writer.writeByteNTimes(0, padding);
     }
 
-    pub fn deserialize(reader: anytype) !AssetHandle {
+    pub fn deserialize(reader: *std.io.Reader, allocator: std.mem.Allocator) !AssetHandle {
+        _ = allocator;
         var handle: AssetHandle = .{};
         handle.len = try reader.takeInt(u8, .little);
         if (handle.len > MAX_ASSET_KEY_LEN)
             return error.InvalidKeyLength;
-        try reader.readNoEof(handle.key[0..handle.len]);
-        // skip padding if present
-        if (MAX_ASSET_KEY_LEN > handle.len) {
-            var skip_buf: [MAX_ASSET_KEY_LEN]u8 = undefined;
-            const skip = MAX_ASSET_KEY_LEN - handle.len;
-            try reader.readNoEof(skip_buf[0..skip]);
-        }
+        const key_slice = try reader.take(handle.len);
+        @memcpy(handle.key[0..handle.len], key_slice);
         return handle;
     }
 

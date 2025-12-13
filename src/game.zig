@@ -24,13 +24,10 @@ pub const GameScene = struct {
     worldTarget: rl.RenderTexture2D,
 
     pub fn init(camera: *rl.Camera3D, allocator: std.mem.Allocator) !GameScene {
-        rl.disableCursor();
+        //rl.disableCursor();
         camera.up = .init(0, 0, 1);
 
         var world = try World.init(allocator);
-        try Snake.generateDefaults(allocator, &world.assetManager);
-        try Apple.generateDefaults(allocator, &world.assetManager);
-        try Spike.generateDefaults(allocator, &world.assetManager);
         const snake = try Snake.create(&world, .init(1, 0, 1));
 
         return GameScene{
@@ -63,9 +60,9 @@ pub const GameScene = struct {
         Systems.checkSpawnApple(&self.world, dt) catch @panic("A!");
         Systems.spikeSpawner(&self.world, dt) catch @panic("A!");
 
-        if (rl.isMouseButtonPressed(.right)) {
+        if (rl.isKeyDown(.q)) {
             const file: ?std.fs.File = std.fs.cwd().createFile("entity", .{ .read = true }) catch null;
-            const version = std.SemanticVersion.parse("1.0.0") catch unreachable;
+            const version = std.SemanticVersion.parse("1.2.3") catch unreachable;
             if (file) |f| {
                 logger.info("Saving world data...", .{});
                 self.world.printRegistry();
@@ -77,19 +74,29 @@ pub const GameScene = struct {
             }
         }
 
-        if (rl.isMouseButtonPressed(.left)) {
+        if (rl.isKeyDown(.e)) {
             const file: ?std.fs.File = std.fs.cwd().openFile("entity", .{}) catch null;
             const version = std.SemanticVersion.parse("1.0.0") catch unreachable;
             if (file) |f| {
                 const stats = f.stat();
+                logger.debug("Loading save file...", .{});
                 logger.debug("Save File stats: {any}", .{stats});
 
                 var buffer: [4096]u8 = undefined;
                 var reader = f.reader(&buffer);
 
+                logger.debug("Unloading current world data...", .{});
                 self.world.deinit();
+
+                logger.debug("Initializing default world data...", .{});
                 self.world = World.init(self.allocator) catch unreachable;
+                logger.debug("World data initialization complete!", .{});
+                self.world.printRegistry();
+
+                logger.debug("Deserializing save file...", .{});
                 _ = self.world.deserialize(&reader.interface, version) catch unreachable;
+                self.world.state.applesAlive = 1;
+                self.world.printRegistry();
             }
         }
 

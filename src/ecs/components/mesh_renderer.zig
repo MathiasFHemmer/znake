@@ -1,12 +1,10 @@
 const std = @import("std");
 const rl = @import("raylib");
+const Serializer = @import("zerializer").Serializer;
+const Deserializer = @import("zerializer").Deserializer;
 const AssetManager = @import("../../asset_manager/asset_manager.zig").AssetManager;
 const AssetHandle = @import("asset_handle.zig").AssetHandle;
 const Transform = @import("transform.zig").Transform;
-
-pub const MeshRendererSer = struct {
-    tint: rl.Color,
-};
 
 pub const MeshRenderer = struct {
     tint: rl.Color,
@@ -15,18 +13,20 @@ pub const MeshRenderer = struct {
     shaderHandle: AssetHandle,
 
     pub fn serialize(self: MeshRenderer, writer: *std.io.Writer) !void {
-        return writer.writeAll(&self.meshHandle.key);
+        try Serializer.serialize(rl.Color, self.tint, writer);
+        try Serializer.serialize(AssetHandle, self.meshHandle, writer);
+        try Serializer.serialize(AssetHandle, self.shaderHandle, writer);
     }
 
     pub fn deserialize(reader: *std.io.Reader, allocator: std.mem.Allocator) !MeshRenderer {
-        _ = allocator;
-        //const len = try reader.takeInt(u32, .little);
-        const key = try reader.take(64);
+        const color = try Deserializer.deserialize(rl.Color, reader, allocator);
+        const meshHandle = try Deserializer.deserialize(AssetHandle, reader, allocator);
+        const shaderHanle = try Deserializer.deserialize(AssetHandle, reader, allocator);
         return MeshRenderer{
-            .tint = rl.Color.white,
+            .tint = color,
             .material = try rl.loadMaterialDefault(),
-            .meshHandle = AssetHandle.init(key),
-            .shaderHandle = AssetHandle.init(""),
+            .meshHandle = meshHandle,
+            .shaderHandle = shaderHanle,
         };
     }
 

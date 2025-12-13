@@ -33,11 +33,16 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const zerializer_dep = b.dependency("zerializer", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     const raylib = raylib_dep.module("raylib"); // main raylib module
     const raygui = raylib_dep.module("raygui"); // raygui module
     const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
-
     const zecs = zecs_dep.module("zecs");
+    const zerializer = zerializer_dep.module("zerializer");
 
     const exe_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
@@ -48,6 +53,7 @@ pub fn build(b: *std.Build) void {
     exe_mod.addImport("raylib", raylib);
     exe_mod.addImport("raygui", raygui);
     exe_mod.addImport("zecs", zecs);
+    exe_mod.addImport("zerializer", zerializer);
 
     const exe = b.addExecutable(.{
         .name = "snake_zig",
