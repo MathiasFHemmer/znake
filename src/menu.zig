@@ -1,4 +1,4 @@
-const Scene = @import("scene.zig").Scene;
+const Scene = @import("./scene_manager/scene.zig").Scene;
 const rl = @import("raylib");
 
 pub const MenuScene = struct {

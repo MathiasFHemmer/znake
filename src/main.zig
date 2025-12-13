@@ -1,12 +1,12 @@
 const std = @import("std");
 const rl = @import("raylib");
-const SceneManager = @import("sceneManager.zig").SceneManager;
+const SceneManager = @import("./scene_manager/sceneManager.zig").SceneManager;
 const GameScene = @import("game.zig").GameScene;
 const MenuScene = @import("menu.zig").MenuScene;
 
 pub const std_options: std.Options = .{
     // Set the log level to info
-    .log_level = .info,
+    .log_level = .debug,
 };
 
 pub fn main() !void {

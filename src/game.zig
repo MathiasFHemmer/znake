@@ -1,10 +1,11 @@
 const std = @import("std");
 const math = @import("math/math.zig");
 const rl = @import("raylib");
-const Scene = @import("scene.zig").Scene;
+const logger = std.log.scoped(.Game);
+const Scene = @import("./scene_manager/scene.zig").Scene;
 const AssetManager = @import("asset_manager/asset_manager.zig").AssetManager;
 const AssetStore = @import("asset_manager/asset_store.zig").AssetStore;
-const Entity = @import("ecs/ecs.zig").Entity;
+const Entity = @import("zecs").Entity;
 const Components = @import("ecs/components.zig");
 const Apple = @import("ecs/entities/apple.zig");
 const Snake = @import("ecs/entities/snake.zig");
@@ -64,9 +65,32 @@ pub const GameScene = struct {
 
         if (rl.isMouseButtonPressed(.right)) {
             const file: ?std.fs.File = std.fs.cwd().createFile("entity", .{ .read = true }) catch null;
+            const version = std.SemanticVersion.parse("1.0.0") catch unreachable;
             if (file) |f| {
-                var writer = f.writer(&.{});
-                self.world.serialize(self.snake, &writer.interface) catch unreachable;
+                logger.info("Saving world data...", .{});
+                self.world.printRegistry();
+                var buffer: [4096]u8 = undefined;
+                var writer = f.writer(&buffer);
+                self.world.serialize(&writer.interface, version) catch unreachable;
+                writer.end() catch unreachable;
+                logger.info("Save complete!", .{});
+            }
+        }
+
+        if (rl.isMouseButtonPressed(.left)) {
+            const file: ?std.fs.File = std.fs.cwd().openFile("entity", .{}) catch null;
+            logger.info("[{any}]", .{file});
+            const version = std.SemanticVersion.parse("1.0.0") catch unreachable;
+            if (file) |f| {
+                const stats = f.stat();
+                logger.info("File stats: {any}", .{stats});
+
+                var buffer: [4096]u8 = undefined;
+                var reader = f.reader(&buffer);
+
+                self.world.deinit();
+                self.world = World.init(self.allocator) catch unreachable;
+                _ = self.world.deserialize(&reader.interface, version) catch unreachable;
             }
         }
 

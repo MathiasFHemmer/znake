@@ -1,10 +1,10 @@
-// const ECS = @import("ecs.zig").ECS;
+const std = @import("std");
 const ECS = @import("zecs").ECS;
 const Components = @import("components.zig");
 const AssetManager = @import("../asset_manager/asset_manager.zig").AssetManager;
 const Input = @import("../input.zig").Input;
 
-const WorldComponents = struct {
+const WorldComponents = union(enum) {
     Transform: Components.Transform,
     Rigidbody: Components.Rigidbody,
     Rotation: Components.Rotation,
@@ -33,7 +33,8 @@ const WorldState = struct {
     applesEaten: u16,
     spikes: u16,
 
-    pub fn init() WorldState {
+    pub fn init(allocator: std.mem.Allocator) WorldState {
+        _ = allocator;
         return .{
             .playerInput = Input.init(),
             .applesAlive = 0,
@@ -42,7 +43,9 @@ const WorldState = struct {
             .meta = Meta.init(),
         };
     }
+    pub fn deinit(self: *WorldState) void {
+        _ = self;
+    }
 };
 
-pub const WorldAssetManager = AssetManager;
-pub const World = ECS(WorldComponents, WorldState, WorldAssetManager);
+pub const World = ECS(WorldComponents, .{ .State = WorldState, .AssetManager = AssetManager });

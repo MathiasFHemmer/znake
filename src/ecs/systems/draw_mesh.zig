@@ -24,7 +24,7 @@ pub fn drawMeshSystem(world: *World, alphaDt: f32) void {
         // Interpolate rotation
         const rot = transform.oldRotation.nlerp(transform.rotation, 1 - @exp(-alphaDt));
 
-        mesh.drawMesh(finalPosition, transform.scale, rot);
+        mesh.drawMesh(finalPosition, transform.scale, rot, &world.assetManager);
 
         if (world.state.meta.drawColliders) {
             if (world.getComponent(entity, Components.Collider)) |col| col.drawCollider(transform);

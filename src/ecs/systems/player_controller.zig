@@ -5,7 +5,7 @@ const AssetStore = @import("../../asset_manager/asset_store.zig").AssetStore;
 const Components = @import("../components.zig");
 const WorldEnv = @import("../world.zig");
 const World = WorldEnv.World;
-const Entity = @import("../ecs.zig").Entity;
+const Entity = @import("zecs").Entity;
 const math = @import("../../math/math.zig");
 
 const rotationSpeed = 5.0;
