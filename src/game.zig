@@ -16,6 +16,8 @@ const Input = @import("input.zig").Input;
 
 const Systems = @import("ecs/systems.zig");
 
+var saveCD: f32 = 0;
+
 pub const GameScene = struct {
     allocator: std.mem.Allocator,
     camera: *rl.Camera3D,
@@ -29,6 +31,7 @@ pub const GameScene = struct {
 
         var world = try World.init(allocator);
         const snake = try Snake.create(&world, .init(1, 0, 1));
+        logger.debug("Player created: {d}", .{snake});
 
         return GameScene{
             .camera = camera,
@@ -60,7 +63,8 @@ pub const GameScene = struct {
         Systems.checkSpawnApple(&self.world, dt) catch @panic("A!");
         Systems.spikeSpawner(&self.world, dt) catch @panic("A!");
 
-        if (rl.isKeyDown(.q)) {
+        if (rl.isKeyDown(.q) and saveCD <= 0) {
+            saveCD = 1;
             const file: ?std.fs.File = std.fs.cwd().createFile("entity", .{ .read = true }) catch null;
             const version = std.SemanticVersion.parse("1.2.3") catch unreachable;
             if (file) |f| {
@@ -74,7 +78,8 @@ pub const GameScene = struct {
             }
         }
 
-        if (rl.isKeyDown(.e)) {
+        if (rl.isKeyDown(.e) and saveCD <= 0) {
+            saveCD = 1;
             const file: ?std.fs.File = std.fs.cwd().openFile("entity", .{}) catch null;
             const version = std.SemanticVersion.parse("1.0.0") catch unreachable;
             if (file) |f| {
@@ -99,7 +104,9 @@ pub const GameScene = struct {
                 self.world.printRegistry();
             }
         }
-
+        if (saveCD > 0) {
+            saveCD -= dt;
+        }
         // const t = self.world.getComponent(self.snake, Components.Transform).?;
         // const cameraPos = (t.position.scale(dt)).add(t.position.scale(1 - dt));
         // self.camera.target = cameraPos;

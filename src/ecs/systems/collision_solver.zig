@@ -27,7 +27,7 @@ pub fn collision_solver(world: *World) void {
             var other_rigidbody = world.getComponent(other_entity, Components.Rigidbody) orelse &default_rb;
 
             if (shapes.checkCollision(transform.position, other_transform.position, collider.shape, other_collider.shape)) |manifest| {
-                logger.info("Mass 1 {any} Mass 2 {any}", .{ rigidbody.mass, other_rigidbody.mass });
+                logger.debug("Mass 1 {any} Mass 2 {any}", .{ rigidbody.mass, other_rigidbody.mass });
 
                 const f1: f32 = if (rigidbody.mass > 0.01) 1.0 / rigidbody.mass else 0.0;
                 const f2: f32 = if (other_rigidbody.mass > 0.01) 1.0 / other_rigidbody.mass else 0.0;
