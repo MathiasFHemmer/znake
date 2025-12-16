@@ -7,7 +7,7 @@ const log2f = @import("./log_to_file.zig").log_to_file;
 
 pub const std_options: std.Options = .{
     // Set the log level to info
-    .log_level = .debug,
+    .log_level = .info,
     .logFn = log2f,
 };
 

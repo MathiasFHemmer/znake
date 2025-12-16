@@ -1,5 +1,6 @@
 const std = @import("std");
 const Scene = @import("scene.zig").Scene;
+const logger = std.log.scoped(.SceneManager);
 
 pub const SceneManager = struct {
     currentScene: *Scene,

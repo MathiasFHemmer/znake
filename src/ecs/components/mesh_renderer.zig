@@ -57,9 +57,6 @@ pub const MeshRenderer = struct {
         const locTime = rl.getShaderLocation(shader.*, "time");
         rl.setShaderValue(self.material.shader, locModel, &position, .vec3);
         rl.setShaderValue(self.material.shader, locTime, &rl.getTime(), .float);
-        // std.debug.print("asdsadsad", .{});
-        // const color = self.tint;
-        // const colorTint = rl.Color.white;
         const mesh = assetManager.meshStore.get(self.meshHandle.asSlice()) catch unreachable;
         mesh.draw(self.material, matTransform);
     }
