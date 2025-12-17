@@ -19,43 +19,60 @@ const Systems = @import("ecs/systems.zig");
 var saveCD: f32 = 0;
 
 pub const GameScene = struct {
-    allocator: std.mem.Allocator,
-    camera: *rl.Camera3D,
+    const Self = @This();
+
     snake: Entity,
     world: World,
-    worldTarget: rl.RenderTexture2D,
 
-    pub fn init(camera: *rl.Camera3D, allocator: std.mem.Allocator) !GameScene {
+    camera: rl.Camera3D,
+    mainTexture: rl.RenderTexture2D,
+    allocator: std.mem.Allocator,
+
+    pub const empty = Self{
+        .snake = 0,
+        .world = {},
+        .camera = undefined,
+        .mainTexture = {},
+        .allocator = undefined,
+    };
+
+    pub fn init(allocator: std.mem.Allocator) !Self {
         //rl.disableCursor();
-        camera.up = .init(0, 0, 1);
 
         var world = try World.init(allocator);
         const snake = try Snake.create(&world, .init(1, 0, 1));
         logger.debug("Player created: {d}", .{snake});
 
-        return GameScene{
-            .camera = camera,
-            .allocator = allocator,
+        return Self{
             .snake = snake,
-            .worldTarget = try rl.loadRenderTexture(800, 450),
+            .mainTexture = try rl.loadRenderTexture(800, 450),
             .world = world,
+            .camera = rl.Camera3D{
+                .position = rl.Vector3{ .x = 10, .y = 10, .z = 10 },
+                .target = rl.Vector3{ .x = 0, .y = 0, .z = 0 },
+                .up = rl.Vector3{ .x = 0, .y = 0, .z = 1 },
+                .fovy = 45,
+                .projection = rl.CameraProjection.perspective,
+            },
+            .allocator = allocator,
         };
     }
 
-    pub fn deinit(self: *GameScene) void {
+    pub fn deinit(self: *GameScene, allocator: std.mem.Allocator) void {
         self.world.deinit();
+        _ = allocator;
     }
 
-    pub fn start(self: *GameScene) !void {
+    pub fn enter(self: *GameScene) !void {
         _ = self;
     }
+
     pub fn fixedUpdate(self: *GameScene, dt: f32) void {
         Systems.checkCollisions(&self.world);
         Systems.checkAppleEat(self.snake, &self.world);
         Systems.playerMove(&self.world, self.snake, dt);
     }
     pub fn update(self: *GameScene) void {
-        self.camera.update(.orbital);
         const dt = rl.getFrameTime();
 
         Systems.gatherInput(&self.world);
@@ -107,27 +124,25 @@ pub const GameScene = struct {
         if (saveCD > 0) {
             saveCD -= dt;
         }
-        // const t = self.world.getComponent(self.snake, Components.Transform).?;
-        // const cameraPos = (t.position.scale(dt)).add(t.position.scale(1 - dt));
-        // self.camera.target = cameraPos;
-        // self.camera.position = cameraPos.add(.init(0, 10, 0));
 
         self.camera.target = self.world.getComponent(self.snake, Components.Transform).?.position;
         self.camera.position = self.world.getComponent(self.snake, Components.Transform).?.position.add(.init(0, 10, 0));
     }
     pub fn render(self: *GameScene, alphaDt: f32) !void {
-        rl.beginTextureMode(self.worldTarget);
+        rl.beginTextureMode(self.mainTexture);
         rl.clearBackground(rl.Color.black);
 
-        rl.beginMode3D(self.camera.*);
+        rl.beginMode3D(self.camera);
 
         Systems.drawMeshSystem(&self.world, alphaDt);
 
         rl.endMode3D();
         rl.endTextureMode();
         // rl.beginShaderMode(self.snake.fowShader);
-        rl.drawTextureRec(self.worldTarget.texture, .init(0, 0, 800, -450), .init(0, 0), .white);
+        rl.drawTextureRec(self.mainTexture.texture, .init(0, 0, 800, -450), .init(0, 0), .white);
         rl.endShaderMode();
+
+        drawWorldAxes(self.camera);
     }
     pub fn renderUI(self: *GameScene) !void {
         // _ = self;
@@ -138,5 +153,27 @@ pub const GameScene = struct {
     }
     pub fn asScene(self: *GameScene) Scene {
         return Scene.init(self);
+    }
+
+    pub fn drawWorldAxes(camera: rl.Camera3D) void {
+        const axisLength: f32 = 10.0;
+        const origin = rl.Vector3.zero();
+        // std.time.sleep(1000 * 1000 * 100);
+        rl.beginMode3D(camera);
+
+        rl.drawLine3D(origin, rl.Vector3{ .x = axisLength, .y = 0, .z = 0 }, rl.Color.red);
+        rl.drawLine3D(origin, rl.Vector3{ .x = 0, .y = axisLength, .z = 0 }, rl.Color.green);
+        rl.drawLine3D(origin, rl.Vector3{ .x = 0, .y = 0, .z = axisLength }, rl.Color.blue);
+
+        rl.endMode3D();
+        rl.drawFPS(10, 10);
+        drawAxisLabel(rl.Vector3{ .x = axisLength + 0.5, .y = 0, .z = 0 }, "X", rl.Color.red, camera);
+        drawAxisLabel(rl.Vector3{ .x = 0, .y = axisLength + 0.5, .z = 0 }, "Y", rl.Color.green, camera);
+        drawAxisLabel(rl.Vector3{ .x = 0, .y = 0, .z = axisLength + 0.5 }, "Z", rl.Color.blue, camera);
+    }
+
+    fn drawAxisLabel(position: rl.Vector3, text: [:0]const u8, color: rl.Color, camera: rl.Camera3D) void {
+        const screenPos = rl.getWorldToScreen(position, camera);
+        rl.drawText(text, @intFromFloat(screenPos.x), @intFromFloat(screenPos.y), 20, color);
     }
 };

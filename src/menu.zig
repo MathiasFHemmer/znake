@@ -1,16 +1,25 @@
+const std = @import("std");
 const Scene = @import("./scene_manager/scene.zig").Scene;
 const rl = @import("raylib");
 
 pub const MenuScene = struct {
-    camera: *rl.Camera3D,
+    camera: rl.Camera3D,
+    isAllocated: bool = false,
 
-    pub fn init(camera: *rl.Camera3D) MenuScene {
+    pub fn init(allocator: std.mem.Allocator) !MenuScene {
+        _ = allocator;
         return MenuScene{
-            .camera = camera,
+            .camera = undefined,
+            .isAllocated = true,
         };
     }
 
-    pub fn start(self: *MenuScene) !void {
+    pub fn deinit(self: *MenuScene, allocator: std.mem.Allocator) void {
+        _ = self;
+        _ = allocator;
+    }
+
+    pub fn enter(self: *MenuScene) !void {
         _ = self;
     }
     pub fn fixedUpdate(self: *MenuScene, dt: f32) void {
