@@ -3,6 +3,7 @@ const math = @import("math/math.zig");
 const rl = @import("raylib");
 const logger = std.log.scoped(.Game);
 const Scene = @import("./scene_manager/scene.zig").Scene;
+const SceneManager = @import("./scene_manager/sceneManager.zig").SceneManager;
 const AssetManager = @import("asset_manager/asset_manager.zig").AssetManager;
 const AssetStore = @import("asset_manager/asset_store.zig").AssetStore;
 const Entity = @import("zecs").Entity;
@@ -21,6 +22,8 @@ var saveCD: f32 = 0;
 pub const GameScene = struct {
     const Self = @This();
 
+    sceneManager: *SceneManager,
+
     snake: Entity,
     world: World,
 
@@ -36,7 +39,7 @@ pub const GameScene = struct {
         .allocator = undefined,
     };
 
-    pub fn init(allocator: std.mem.Allocator) !Self {
+    pub fn init(allocator: std.mem.Allocator, sceneManager: *SceneManager) !Self {
         //rl.disableCursor();
 
         var world = try World.init(allocator);
@@ -44,6 +47,7 @@ pub const GameScene = struct {
         logger.debug("Player created: {d}", .{snake});
 
         return Self{
+            .sceneManager = sceneManager,
             .snake = snake,
             .mainTexture = try rl.loadRenderTexture(800, 450),
             .world = world,
@@ -73,6 +77,9 @@ pub const GameScene = struct {
         Systems.playerMove(&self.world, self.snake, dt);
     }
     pub fn update(self: *GameScene) void {
+        if (rl.isKeyPressed(.space)) {
+            self.sceneManager.scheduleSceneSwitch("game2") catch {};
+        }
         const dt = rl.getFrameTime();
 
         Systems.gatherInput(&self.world);

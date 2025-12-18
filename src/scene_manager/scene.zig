@@ -20,9 +20,11 @@
 //!   - exit(): Called when exiting the scene.
 const std = @import("std");
 const rl = @import("raylib");
+const SceneManager = @import("./sceneManager.zig").SceneManager;
 
 pub const Scene = struct {
     scene: *anyopaque,
+    sceneManager: *SceneManager,
 
     enterFn: *const fn (*anyopaque) anyerror!void,
     fixedUpdateFn: *const fn (*anyopaque, f32) void,
@@ -48,7 +50,7 @@ pub const Scene = struct {
     ///   - scene_ptr: Pointer to the scene object instance.
     ///
     /// Returns: A Scene wrapper that can be used with SceneManager.
-    pub fn init(scene_ptr: anytype) Scene {
+    pub fn init(scene_ptr: anytype, sceneManager: *SceneManager) Scene {
         const T = @TypeOf(scene_ptr);
         const gen = struct {
             fn enter(ptr: *anyopaque) !void {
@@ -84,6 +86,7 @@ pub const Scene = struct {
 
         return Scene{
             .scene = scene_ptr,
+            .sceneManager = sceneManager,
             .enterFn = gen.enter,
             .deinitFn = gen.deinit,
             .fixedUpdateFn = gen.fixedUpdate,

@@ -1,14 +1,17 @@
 const std = @import("std");
 const Scene = @import("./scene_manager/scene.zig").Scene;
+const SceneManager = @import("./scene_manager/sceneManager.zig").SceneManager;
 const rl = @import("raylib");
 
 pub const MenuScene = struct {
+    sceneManager: *SceneManager,
     camera: rl.Camera3D,
     isAllocated: bool = false,
 
-    pub fn init(allocator: std.mem.Allocator) !MenuScene {
+    pub fn init(allocator: std.mem.Allocator, sceneManager: *SceneManager) !MenuScene {
         _ = allocator;
         return MenuScene{
+            .sceneManager = sceneManager,
             .camera = undefined,
             .isAllocated = true,
         };
@@ -27,7 +30,9 @@ pub const MenuScene = struct {
         _ = dt;
     }
     pub fn update(self: *MenuScene) void {
-        self.camera.update(.orbital);
+        if (rl.isKeyPressed(.space)) {
+            self.sceneManager.scheduleSceneSwitch("game") catch {};
+        }
     }
     pub fn render(self: *MenuScene, alphaDt: f32) !void {
         _ = self;

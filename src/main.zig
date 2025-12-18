@@ -23,6 +23,7 @@ pub fn main() !void {
 
     var sceneManager = SceneManager.init(gpa.allocator());
     try sceneManager.register("game", GameScene);
+    try sceneManager.register("game2", GameScene);
     try sceneManager.register("menu", MenuScene);
     try sceneManager.scheduleSceneSwitch("menu");
     try sceneManager.performSwitch();
@@ -50,8 +51,5 @@ pub fn main() !void {
         rl.endDrawing();
 
         try sceneManager.performSwitch();
-        if (rl.isKeyPressed(.space)) {
-            try sceneManager.scheduleSceneSwitch("game");
-        }
     }
 }

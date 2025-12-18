@@ -8,7 +8,7 @@ pub const SceneManager = struct {
         id: []const u8,
 
         /// Creates a fully initialized Scene
-        createFn: *const fn (std.mem.Allocator) anyerror!Scene,
+        createFn: *const fn (std.mem.Allocator, *SceneManager) anyerror!Scene,
 
         /// Cached instance (for lazy scenes)
         scene: ?Scene,
@@ -39,10 +39,10 @@ pub const SceneManager = struct {
     // -------------------------
     pub fn register(self: *Self, id: []const u8, comptime SceneType: type) !void {
         const factory = struct {
-            fn create(alloc: std.mem.Allocator) !Scene {
+            fn create(alloc: std.mem.Allocator, manager: *SceneManager) !Scene {
                 const scene_obj = try alloc.create(SceneType);
-                scene_obj.* = try SceneType.init(alloc);
-                return Scene.init(scene_obj);
+                scene_obj.* = try SceneType.init(alloc, manager);
+                return Scene.init(scene_obj, manager);
             }
         };
 
@@ -88,7 +88,7 @@ pub const SceneManager = struct {
 
         // Lazy init
         if (stage.scene == null) {
-            stage.scene = try stage.createFn(self.allocator);
+            stage.scene = try stage.createFn(self.allocator, self);
         }
 
         // Exit & destroy old scene
