@@ -12,8 +12,8 @@ pub const std_options: std.Options = .{
 };
 
 pub fn main() !void {
-    const screenWidth = 800;
-    const screenHeight = 450;
+    const screenWidth = 1920;
+    const screenHeight = 1080;
 
     rl.initWindow(screenWidth, screenHeight, "Snake Game (Does极)");
     defer rl.closeWindow();

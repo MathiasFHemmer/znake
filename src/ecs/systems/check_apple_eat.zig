@@ -20,7 +20,7 @@ pub fn check_apple_eat(player: Entity, world: *World) void {
         const coll = world.getComponent(entity, Components.Collider);
         if (coll == null) continue;
 
-        if (shapes.checkCollision(playerTransform.position, transform.position, playerCollider.shape, coll.?.shape)) |_| {
+        if (shapes.checkCollision(playerTransform.position, playerTransform.rotation, transform.position, transform.rotation, playerCollider.shape, coll.?.shape)) |_| {
             if (world.getComponent(entity, Components.TagApple) != null) {
                 world.markForRemoval(entity);
                 world.state.applesAlive -= 1;

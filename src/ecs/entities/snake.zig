@@ -36,7 +36,7 @@ pub fn create(world: *WorldEnv.World, position: rl.Vector3) !Entity {
     world.addComponent(entity, Components.Rotation.init(0));
     world.addComponent(entity, Components.Rigidbody.init(10));
     world.addComponent(entity, try Components.MeshRenderer.init(SNAKE_MESH_KEY, SNAKE_SHADER_KEY));
-    world.addComponent(entity, Components.Collider.init(.{ .sphere = .unit() }));
+    world.addComponent(entity, Components.Collider.init(.{ .cube = .unit() }));
 
     return entity;
 }

@@ -49,7 +49,7 @@ pub const GameScene = struct {
         return Self{
             .sceneManager = sceneManager,
             .snake = snake,
-            .mainTexture = try rl.loadRenderTexture(800, 450),
+            .mainTexture = try rl.loadRenderTexture(1920, 1080),
             .world = world,
             .camera = rl.Camera3D{
                 .position = rl.Vector3{ .x = 10, .y = 10, .z = 10 },
@@ -72,9 +72,9 @@ pub const GameScene = struct {
     }
 
     pub fn fixedUpdate(self: *GameScene, dt: f32) void {
+        Systems.playerMove(&self.world, self.snake, dt);
         Systems.checkCollisions(&self.world);
         Systems.checkAppleEat(self.snake, &self.world);
-        Systems.playerMove(&self.world, self.snake, dt);
     }
     pub fn update(self: *GameScene) void {
         if (rl.isKeyPressed(.space)) {
@@ -146,7 +146,7 @@ pub const GameScene = struct {
         rl.endMode3D();
         rl.endTextureMode();
         // rl.beginShaderMode(self.snake.fowShader);
-        rl.drawTextureRec(self.mainTexture.texture, .init(0, 0, 800, -450), .init(0, 0), .white);
+        rl.drawTextureRec(self.mainTexture.texture, .init(0, 0, 1920, -1080), .init(0, 0), .white);
         rl.endShaderMode();
 
         drawWorldAxes(self.camera);

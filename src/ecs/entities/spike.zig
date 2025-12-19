@@ -20,13 +20,13 @@ pub fn create(world: *WorldEnv.World, position: rl.Vector3) !Entity {
     var mass = rand.float(f32);
     if (mass <= 0.5) mass = 0 else mass *= 25;
 
-    const coll_size = if (mass != 0) mass / 20 else 0.5;
+    const coll_size = if (mass != 0) mass / 10 else 1;
 
     var t = Components.Transform.init(position);
     if (mass != 0) t.scale = t.scale.scale(mass / 10);
     world.addComponent(entity, t);
     world.addComponent(entity, try Components.MeshRenderer.init("SPIKE", "default"));
-    world.addComponent(entity, Components.Collider.init(.{ .sphere = .init(coll_size) }));
+    world.addComponent(entity, Components.Collider.init(.{ .cube = .init(coll_size) }));
     world.addComponent(entity, Components.Rigidbody.init(mass));
 
     return entity;
