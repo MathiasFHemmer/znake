@@ -37,12 +37,12 @@ pub const Scene = struct {
     /// Initializes a Scene wrapper around a scene object.
     ///
     /// The scene object must have the following methods:
-    ///   - init(allocator: std.mem.Allocator) !@This()
+    ///   - init(allocator: std.mem.Allocator, sceneManager: *SceneManager) !@This()
     ///   - deinit(self: *@This(), allocator: std.mem.Allocator) void
     ///   - enter() !void
-    ///   - fixedUpdate(f32) void
+    ///   - fixedUpdate(delta: f32) void
     ///   - update() void
-    ///   - render(f32) !void
+    ///   - render(delta: f32) !void
     ///   - renderUI() !void
     ///   - exit() void
     ///
