@@ -2,11 +2,14 @@ const std = @import("std");
 const Scene = @import("./scene_manager/scene.zig").Scene;
 const SceneManager = @import("./scene_manager/sceneManager.zig").SceneManager;
 const rl = @import("raylib");
+const ui = @import("./ui/ui.zig");
 
 pub const MenuScene = struct {
     sceneManager: *SceneManager,
     camera: rl.Camera3D,
     isAllocated: bool = false,
+    uiCtx: ui.Context,
+    counter: u32,
 
     pub fn init(allocator: std.mem.Allocator, sceneManager: *SceneManager) !MenuScene {
         _ = allocator;
@@ -14,6 +17,8 @@ pub const MenuScene = struct {
             .sceneManager = sceneManager,
             .camera = undefined,
             .isAllocated = true,
+            .uiCtx = ui.Context.init(),
+            .counter = 0,
         };
     }
 
@@ -30,19 +35,36 @@ pub const MenuScene = struct {
         _ = dt;
     }
     pub fn update(self: *MenuScene) void {
-        if (rl.isKeyPressed(.space)) {
-            self.sceneManager.scheduleSceneSwitch("game") catch {};
-        }
+        _ = self;
     }
     pub fn render(self: *MenuScene, alphaDt: f32) !void {
         _ = self;
         _ = alphaDt;
     }
     pub fn renderUI(self: *MenuScene) !void {
-        _ = self;
-        const posY = @as(f32, @floatFromInt(rl.getScreenHeight())) / 2.0;
-        const posX = (@as(f32, @floatFromInt(rl.getScreenWidth())) / 2.0) - (@as(f32, @floatFromInt(rl.measureText("GET IN LOSER, WE GOT APPLES TO EAT!", 20))) / 2.0);
-        rl.drawText("GET IN LOSER, WE GOT APPLES TO EAT!", @intFromFloat(posX), @intFromFloat(posY), 20, .white);
+        self.uiCtx.beginDraw(.{
+            .data = CustomData
+            .layout = .CENTERED,
+            .elements = [
+                ui.Frame.init(.{
+                    .backgroundColor = rl.Color.white,
+                    .layout = .TOP_TO_BOTTOM,
+                    .onClick = (data) => {
+
+                    }
+                    .onHover =...
+                })
+            ]
+        });
+
+        self.uiCtx.beginDraw();
+        if (ui.DrawButton(128, 64, rl.Color.white, &self.uiCtx)) {
+            self.sceneManager.scheduleSceneSwitch("game") catch {};
+        }
+        if (ui.DrawButton(128, 64, rl.Color.red, &self.uiCtx)) {
+            self.sceneManager.scheduleSceneSwitch("game2") catch {};
+        }
+        self.uiCtx.endDraw();
     }
     pub fn exit(self: *MenuScene) void {
         _ = self;
