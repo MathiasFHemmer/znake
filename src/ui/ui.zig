@@ -2,178 +2,146 @@
 const std = @import("std");
 const rl = @import("raylib");
 
-pub const Frame = struct {
+pub const LayoutDirection = enum {
+    LEFT_TO_RIGHT,
+    TOP_TO_BOTTOM,
+};
+
+pub const UIElement = struct {
+    id: []const u8,
+    layout: LayoutDirection,
+    position: ?rl.Vector2,
+    dimension: ?rl.Vector2,
     backgroundColor: rl.Color,
-    layout: LayoutDirection,
-    width: ?f32,
-    height: ?f32,
+
     onClick: ?*const fn (data: *anyopaque) void,
     onHover: ?*const fn (data: *anyopaque) void,
-    elements: []UIElementConfig,
+    children: std.ArrayList([]u8),
 
-    pub fn init(config: anytype) Frame {
+    pub fn init(allocator: std.mem.Allocator, config: anytype) !UIElement {
+        var children = try std.ArrayList([]u8).initCapacity(allocator, 0);
+        if (@hasField(@TypeOf(config), "children")) {
+            for (config.children) |child| {
+                try children.append(allocator, try allocator.dupe(u8, child));
+            }
+        }
+
         return .{
+            .id = config.id,
             .backgroundColor = config.backgroundColor,
-            .layout = config.layout,
-            .width = if (@hasField(@TypeOf(config), "width")) config.width else null,
-            .height = if (@hasField(@TypeOf(config), "height")) config.height else null,
+            .layout = if (@hasField(@TypeOf(config), "layout")) config.layout else .LEFT_TO_RIGHT,
+            .position = if (@hasField(@TypeOf(config), "position")) config.position else null,
+            .dimension = if (@hasField(@TypeOf(config), "dimension")) config.dimension else null,
             .onClick = if (@hasField(@TypeOf(config), "onClick")) config.onClick else null,
             .onHover = if (@hasField(@TypeOf(config), "onHover")) config.onHover else null,
-            .elements = config.elements,
+            .children = children,
         };
     }
-};
 
-pub const Button = struct {
-    color: rl.Color,
-    width: f32,
-    height: f32,
-    onClick: ?*const fn (data: *anyopaque) void,
-    onHover: ?*const fn (data: *anyopaque) void,
-
-    pub fn init(config: anytype) Button {
-        return .{
-            .color = config.color,
-            .width = config.width,
-            .height = config.height,
-            .onClick = if (@hasField(@TypeOf(config), "onClick")) config.onClick else null,
-            .onHover = if (@hasField(@TypeOf(config), "onHover")) config.onHover else null,
-        };
+    pub fn deinit(self: *UIElement, allocator: std.mem.Allocator) void {
+        for (self.children.items) |child| {
+            allocator.free(child);
+        }
+        self.children.deinit(allocator);
     }
-};
-
-pub const UIElementConfig = union(enum) {
-    frame: Frame,
-    button: Button,
-};
-
-pub const UIConfig = struct {
-    data: *anyopaque,
-    layout: LayoutDirection,
-    elements: []UIElementConfig,
-};
-
-pub const ButtonResult = struct {
-    clicked: bool,
-    hovered: bool,
 };
 
 pub const Context = struct {
     const Self = @This();
-    mousePosition: rl.Vector2,
-    canvaSize: rl.Vector2,
-    selectPressed: bool,
-    root: UIElement,
-    currentParent: *UIElement,
-    container: UIElement,
-    previousParent: ?*UIElement,
+
+    allocator: std.mem.Allocator,
+    elements: std.StringHashMap(UIElement),
+    parent_stack: std.ArrayList([]u8),
 
     pub fn init() Self {
+        const allocator = std.heap.page_allocator;
         return .{
-            .mousePosition = .zero(),
-            .canvaSize = .zero(),
-            .selectPressed = false,
-            .root = UIElement.init(),
-            .currentParent = undefined,
-            .container = UIElement.init(),
-            .previousParent = null,
+            .allocator = allocator,
+            .elements = std.StringHashMap(UIElement).init(allocator),
+            .parent_stack = std.ArrayList([]u8).initCapacity(allocator, 0) catch unreachable,
         };
     }
 
-    pub fn beginDraw(self: *Self) void {
-        self.mousePosition = rl.getMousePosition();
-        self.canvaSize = .init(@floatFromInt(rl.getScreenWidth()), @floatFromInt(rl.getScreenHeight()));
-        self.selectPressed = rl.isMouseButtonPressed(rl.MouseButton.left);
-        self.root = UIElement{
-            .position = .init(0, 0),
-            .dimension = self.canvaSize,
-            .backgroundColor = rl.Color.white,
-            .layoutDirection = .LEFT_TO_RIGHT,
-            .currentLayoutPosition = .init(0, 0),
-        };
-        self.currentParent = &self.root;
-        self.previousParent = null;
+    pub fn deinit(self: *Self) void {
+        var it = self.elements.iterator();
+        while (it.next()) |entry| {
+            entry.value_ptr.deinit(self.allocator);
+        }
+        self.elements.deinit();
+        self.parent_stack.deinit(self.allocator);
     }
 
-    pub fn endDraw(self: *Self) void {
-        self.selectPressed = false;
+    pub fn beginElement(self: *Self, config: anytype) !void {
+        const id = config.id;
+        const element = try UIElement.init(self.allocator, config);
+
+        // If there's a current parent, add this as child
+        if (self.parent_stack.items.len > 0) {
+            const parent_id = self.parent_stack.items[self.parent_stack.items.len - 1];
+            if (self.elements.getPtr(parent_id)) |parent| {
+                try parent.children.append(self.allocator, try self.allocator.dupe(u8, id));
+            }
+        }
+
+        try self.elements.put(try self.allocator.dupe(u8, id), element);
+        try self.parent_stack.append(self.allocator, try self.allocator.dupe(u8, id));
     }
-};
 
-pub const LayoutDirection = enum {
-    LEFT_TO_RIGHT,
-    TOP_TO_BOTTOM,
-    CENTERED,
-};
-
-pub const UIElement = struct {
-    const Self = @This();
-
-    position: rl.Vector2,
-    dimension: rl.Vector2,
-    backgroundColor: rl.Color,
-    layoutDirection: LayoutDirection,
-    currentLayoutPosition: rl.Vector2,
-
-    pub fn init() Self {
-        return Self{
-            .position = .init(0, 0),
-            .dimension = .init(0, 0),
-            .backgroundColor = rl.Color.white,
-            .layoutDirection = .LEFT_TO_RIGHT,
-            .currentLayoutPosition = .init(0, 0),
-        };
+    pub fn endElement(self: *Self) void {
+        _ = self.parent_stack.pop();
     }
-};
 
-pub fn beginContainer(width: f32, height: f32, backgroundColor: rl.Color, layoutDirection: LayoutDirection, ctx: *Context) void {
-    ctx.container = UIElement{
-        .position = if (layoutDirection == .CENTERED) ctx.currentParent.position.add(ctx.currentParent.dimension.sub(.init(width, height)).scale(0.5)) else ctx.currentParent.position.add(ctx.currentParent.currentLayoutPosition),
-        .dimension = .init(width, height),
-        .backgroundColor = backgroundColor,
-        .layoutDirection = layoutDirection,
-        .currentLayoutPosition = .init(0, 0),
-    };
-    rl.drawRectangleRec(.init(ctx.container.position.x, ctx.container.position.y, width, height), backgroundColor);
-    ctx.previousParent = ctx.currentParent;
-    ctx.currentParent = &ctx.container;
-}
+    pub fn clear(self: *Self) void {
+        var it = self.elements.iterator();
+        while (it.next()) |entry| {
+            for (entry.value_ptr.children.items) |child| {
+                self.allocator.free(child);
+            }
+            entry.value_ptr.children.clearRetainingCapacity();
+        }
+        self.elements.clearRetainingCapacity();
+        self.parent_stack.clearRetainingCapacity();
+    }
 
-pub fn endContainer(ctx: *Context) void {
-    ctx.currentParent = ctx.previousParent.?;
-    ctx.previousParent = null;
-}
-
-pub fn DrawButton(width: f32, height: f32, buttonColor: rl.Color, ctx: *Context) bool {
-    var result = false;
-    var color = rl.colorAlpha(buttonColor, 0.7);
-    var posX: f32 = undefined;
-    var posY: f32 = undefined;
-
-    if (ctx.currentParent.layoutDirection == .CENTERED) {
-        posX = ctx.currentParent.position.x + (ctx.currentParent.dimension.x - width) / 2;
-        posY = ctx.currentParent.position.y + (ctx.currentParent.dimension.y - height) / 2;
-    } else {
-        posX = ctx.currentParent.position.x + ctx.currentParent.currentLayoutPosition.x;
-        posY = ctx.currentParent.position.y + ctx.currentParent.currentLayoutPosition.y;
-        if (ctx.currentParent.layoutDirection == .LEFT_TO_RIGHT) {
-            ctx.currentParent.currentLayoutPosition.x += width;
-        } else if (ctx.currentParent.layoutDirection == .TOP_TO_BOTTOM) {
-            ctx.currentParent.currentLayoutPosition.y += height;
+    pub fn render(self: *Self) void {
+        // Start from root elements (those not in any parent's children)
+        var it = self.elements.iterator();
+        while (it.next()) |entry| {
+            const element = entry.value_ptr;
+            if (!self.isChildOfAny(element.id)) {
+                self.renderElement(element, .{ .x = 0, .y = 0 });
+            }
         }
     }
 
-    const rec = rl.Rectangle.init(posX, posY, width, height);
-    if (CheckCollisionPointRec(ctx.mousePosition, rec)) {
-        color = rl.colorAlpha(buttonColor, 1);
-        result = ctx.selectPressed;
+    fn isChildOfAny(self: *Self, id: []const u8) bool {
+        var it = self.elements.iterator();
+        while (it.next()) |entry| {
+            for (entry.value_ptr.children.items) |child_id| {
+                if (std.mem.eql(u8, child_id, id)) return true;
+            }
+        }
+        return false;
     }
-    rl.drawRectangleRec(rec, color);
-    return result;
-}
 
-fn CheckCollisionPointRec(point: rl.Vector2, rec: rl.Rectangle) bool {
-    const insideX = (point.x >= rec.x) and (point.x <= (rec.x + rec.width));
-    const insideY = (point.y >= rec.y) and (point.y <= (rec.y + rec.height));
-    return insideX and insideY;
-}
+    fn renderElement(self: *Self, element: *const UIElement, parent_pos: rl.Vector2) void {
+        const pos = if (element.position) |p| rl.Vector2{ .x = parent_pos.x + p.x, .y = parent_pos.y + p.y } else parent_pos;
+        const size = element.dimension orelse rl.Vector2{ .x = 100, .y = 100 }; // default size
+
+        rl.drawRectangle(@intFromFloat(pos.x), @intFromFloat(pos.y), @intFromFloat(size.x), @intFromFloat(size.y), element.backgroundColor);
+
+        // Calculate child positions based on layout
+        var current_pos = pos;
+        for (element.children.items) |child_id| {
+            if (self.elements.getPtr(child_id)) |child| {
+                self.renderElement(child, current_pos);
+                // Update position for next child
+                if (element.layout == .LEFT_TO_RIGHT) {
+                    current_pos.x += child.dimension.?.x;
+                } else {
+                    current_pos.y += child.dimension.?.y;
+                }
+            }
+        }
+    }
+};

@@ -3,6 +3,11 @@ const Scene = @import("./scene_manager/scene.zig").Scene;
 const SceneManager = @import("./scene_manager/sceneManager.zig").SceneManager;
 const rl = @import("raylib");
 const ui = @import("./ui/ui.zig");
+const logger = @import("std").log.scoped(.MENU);
+
+pub const CustomData = struct {
+    sceneManager: *SceneManager,
+};
 
 pub const MenuScene = struct {
     sceneManager: *SceneManager,
@@ -10,6 +15,7 @@ pub const MenuScene = struct {
     isAllocated: bool = false,
     uiCtx: ui.Context,
     counter: u32,
+    customData: CustomData,
 
     pub fn init(allocator: std.mem.Allocator, sceneManager: *SceneManager) !MenuScene {
         _ = allocator;
@@ -19,12 +25,13 @@ pub const MenuScene = struct {
             .isAllocated = true,
             .uiCtx = ui.Context.init(),
             .counter = 0,
+            .customData = CustomData{ .sceneManager = sceneManager },
         };
     }
 
     pub fn deinit(self: *MenuScene, allocator: std.mem.Allocator) void {
-        _ = self;
         _ = allocator;
+        self.uiCtx.deinit();
     }
 
     pub fn enter(self: *MenuScene) !void {
@@ -42,29 +49,49 @@ pub const MenuScene = struct {
         _ = alphaDt;
     }
     pub fn renderUI(self: *MenuScene) !void {
-        self.uiCtx.beginDraw(.{
-            .data = CustomData
-            .layout = .CENTERED,
-            .elements = [
-                ui.Frame.init(.{
-                    .backgroundColor = rl.Color.white,
-                    .layout = .TOP_TO_BOTTOM,
-                    .onClick = (data) => {
+        const ctx = &self.uiCtx;
+        ctx.clear();
 
-                    }
-                    .onHover =...
-                })
-            ]
+        // Build UI
+        try ctx.beginElement(.{
+            .id = "root",
+            .backgroundColor = rl.Color{ .r = 50, .g = 50, .b = 50, .a = 255 },
+            .layout = .TOP_TO_BOTTOM,
+            .dimension = rl.Vector2{ .x = 400, .y = 600 },
+            .position = rl.Vector2{ .x = 100, .y = 100 },
         });
 
-        self.uiCtx.beginDraw();
-        if (ui.DrawButton(128, 64, rl.Color.white, &self.uiCtx)) {
-            self.sceneManager.scheduleSceneSwitch("game") catch {};
-        }
-        if (ui.DrawButton(128, 64, rl.Color.red, &self.uiCtx)) {
-            self.sceneManager.scheduleSceneSwitch("game2") catch {};
-        }
-        self.uiCtx.endDraw();
+        try ctx.beginElement(.{
+            .id = "title",
+            .backgroundColor = rl.Color{ .r = 100, .g = 100, .b = 200, .a = 255 },
+            .dimension = rl.Vector2{ .x = 300, .y = 100 },
+        });
+        ctx.endElement();
+
+        try ctx.beginElement(.{
+            .id = "buttons",
+            .backgroundColor = rl.Color{ .r = 80, .g = 80, .b = 80, .a = 255 },
+            .layout = .TOP_TO_BOTTOM,
+            .dimension = rl.Vector2{ .x = 400, .y = 200 },
+        });
+
+        try ctx.beginElement(.{
+            .id = "start_button",
+            .backgroundColor = rl.Color{ .r = 0, .g = 255, .b = 0, .a = 255 },
+            .dimension = rl.Vector2{ .x = 200, .y = 50 },
+        });
+        ctx.endElement();
+
+        try ctx.beginElement(.{
+            .id = "exit_button",
+            .backgroundColor = rl.Color{ .r = 255, .g = 0, .b = 0, .a = 255 },
+            .dimension = rl.Vector2{ .x = 200, .y = 50 },
+        });
+        ctx.endElement();
+
+        ctx.endElement();
+        ctx.endElement();
+        ctx.render();
     }
     pub fn exit(self: *MenuScene) void {
         _ = self;
