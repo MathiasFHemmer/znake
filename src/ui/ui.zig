@@ -14,8 +14,8 @@ pub const UIElement = struct {
     dimension: ?rl.Vector2,
     backgroundColor: rl.Color,
 
-    onClick: ?*const fn (data: *anyopaque) void,
-    onHover: ?*const fn (data: *anyopaque) void,
+    onClick: ?*const fn () void,
+    onHover: ?*const fn () void,
     children: std.ArrayList([]u8),
 
     pub fn init(allocator: std.mem.Allocator, config: anytype) !UIElement {
@@ -128,7 +128,25 @@ pub const Context = struct {
         const pos = if (element.position) |p| rl.Vector2{ .x = parent_pos.x + p.x, .y = parent_pos.y + p.y } else parent_pos;
         const size = element.dimension orelse rl.Vector2{ .x = 100, .y = 100 }; // default size
 
-        rl.drawRectangle(@intFromFloat(pos.x), @intFromFloat(pos.y), @intFromFloat(size.x), @intFromFloat(size.y), element.backgroundColor);
+        // Create bounds rectangle for input checking
+        const bounds = rl.Rectangle{ .x = pos.x, .y = pos.y, .width = size.x, .height = size.y };
+
+        var isHover = false;
+        // Handle input during render
+        const mousePos = rl.getMousePosition();
+        if (rl.checkCollisionPointRec(mousePos, bounds)) {
+            isHover = true;
+            if (rl.isMouseButtonPressed(.left)) {
+                if (element.onClick) |callback| {
+                    callback();
+                }
+            }
+            if (element.onHover) |callback| {
+                callback();
+            }
+        }
+        const color = if (isHover) rl.Color.alpha(element.backgroundColor, 0.7) else element.backgroundColor;
+        rl.drawRectangle(@intFromFloat(pos.x), @intFromFloat(pos.y), @intFromFloat(size.x), @intFromFloat(size.y), color);
 
         // Calculate child positions based on layout
         var current_pos = pos;
