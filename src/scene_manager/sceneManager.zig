@@ -21,6 +21,7 @@ pub const SceneManager = struct {
     current: Scene,
     currentId: ?[]const u8,
     nextStageId: ?[]const u8,
+    exit: bool,
 
     // -------------------------
     // init
@@ -32,7 +33,17 @@ pub const SceneManager = struct {
             .current = undefined,
             .currentId = null,
             .nextStageId = null,
+            .exit = false,
         };
+    }
+
+    pub fn deinit(self: *Self) void {
+        if (self.currentId) |_| {
+            self.current.exit();
+            self.current.deinit(self.allocator);
+        }
+
+        self.registry.deinit(self.allocator);
     }
 
     // -------------------------
@@ -105,5 +116,11 @@ pub const SceneManager = struct {
         try self.current.enter();
 
         self.nextStageId = null;
+    }
+    // -------------------------
+    // exit
+    // -------------------------
+    pub fn setExit(self: *Self) void {
+        self.exit = true;
     }
 };

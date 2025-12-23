@@ -13,17 +13,16 @@ pub const MenuScene = struct {
     sceneManager: *SceneManager,
     camera: rl.Camera3D,
     isAllocated: bool = false,
-    uiCtx: ui.Context,
+    ui: ui.UI,
     counter: u32,
     customData: CustomData,
 
     pub fn init(allocator: std.mem.Allocator, sceneManager: *SceneManager) !MenuScene {
-        _ = allocator;
         return MenuScene{
             .sceneManager = sceneManager,
             .camera = undefined,
             .isAllocated = true,
-            .uiCtx = ui.Context.init(),
+            .ui = ui.UI.init(allocator),
             .counter = 0,
             .customData = CustomData{ .sceneManager = sceneManager },
         };
@@ -31,7 +30,7 @@ pub const MenuScene = struct {
 
     pub fn deinit(self: *MenuScene, allocator: std.mem.Allocator) void {
         _ = allocator;
-        self.uiCtx.deinit();
+        self.ui.deinit();
     }
 
     pub fn enter(self: *MenuScene) !void {
@@ -49,49 +48,21 @@ pub const MenuScene = struct {
         _ = alphaDt;
     }
     pub fn renderUI(self: *MenuScene) !void {
-        const ctx = &self.uiCtx;
-        ctx.clear();
+        const menuUi = struct {
+            fn draw(canvas: *ui.UI, scene: *MenuScene) void {
+                canvas.beginLayout(.TOP_TO_BOTTOM, .{ .margin = .{ .relative = .init(0.5, 0.5) } });
+                defer canvas.endLayout();
 
-        // Build UI
-        try ctx.beginElement(.{
-            .id = "root",
-            .backgroundColor = rl.Color{ .r = 50, .g = 50, .b = 50, .a = 255 },
-            .layout = .TOP_TO_BOTTOM,
-            .dimension = rl.Vector2{ .x = 400, .y = 600 },
-            .position = rl.Vector2{ .x = 100, .y = 100 },
-        });
+                if (canvas.button("Play", .{})) {
+                    scene.sceneManager.scheduleSceneSwitch("game") catch unreachable;
+                }
+                if (canvas.button("Quit", .{})) {
+                    scene.sceneManager.setExit();
+                }
+            }
+        }.draw;
 
-        try ctx.beginElement(.{
-            .id = "title",
-            .backgroundColor = rl.Color{ .r = 100, .g = 100, .b = 200, .a = 255 },
-            .dimension = rl.Vector2{ .x = 300, .y = 100 },
-        });
-        ctx.endElement();
-
-        try ctx.beginElement(.{
-            .id = "buttons",
-            .backgroundColor = rl.Color{ .r = 80, .g = 80, .b = 80, .a = 255 },
-            .layout = .TOP_TO_BOTTOM,
-            .dimension = rl.Vector2{ .x = 400, .y = 200 },
-        });
-
-        try ctx.beginElement(.{
-            .id = "start_button",
-            .backgroundColor = rl.Color{ .r = 0, .g = 255, .b = 0, .a = 255 },
-            .dimension = rl.Vector2{ .x = 200, .y = 50 },
-        });
-        ctx.endElement();
-
-        try ctx.beginElement(.{
-            .id = "exit_button",
-            .backgroundColor = rl.Color{ .r = 255, .g = 0, .b = 0, .a = 255 },
-            .dimension = rl.Vector2{ .x = 200, .y = 50 },
-        });
-        ctx.endElement();
-
-        ctx.endElement();
-        ctx.endElement();
-        ctx.render();
+        self.ui.run(self, menuUi);
     }
     pub fn exit(self: *MenuScene) void {
         _ = self;

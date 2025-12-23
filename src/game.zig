@@ -14,7 +14,7 @@ const Spike = @import("ecs/entities/spike.zig");
 const WorldEnv = @import("ecs/world.zig");
 const World = WorldEnv.World;
 const Input = @import("input.zig").Input;
-
+const ui = @import("./ui/ui.zig");
 const Systems = @import("ecs/systems.zig");
 
 var saveCD: f32 = 0;
@@ -23,6 +23,8 @@ pub const GameScene = struct {
     const Self = @This();
 
     sceneManager: *SceneManager,
+    ui: ui.UI,
+    showMenu: bool,
 
     snake: Entity,
     world: World,
@@ -51,6 +53,8 @@ pub const GameScene = struct {
             .snake = snake,
             .mainTexture = try rl.loadRenderTexture(1920, 1080),
             .world = world,
+            .ui = ui.UI.init(allocator),
+            .showMenu = false,
             .camera = rl.Camera3D{
                 .position = rl.Vector3{ .x = 10, .y = 10, .z = 10 },
                 .target = rl.Vector3{ .x = 0, .y = 0, .z = 0 },
@@ -63,8 +67,9 @@ pub const GameScene = struct {
     }
 
     pub fn deinit(self: *GameScene, allocator: std.mem.Allocator) void {
-        self.world.deinit();
         _ = allocator;
+        self.world.deinit();
+        self.ui.deinit();
     }
 
     pub fn enter(self: *GameScene) !void {
@@ -72,14 +77,19 @@ pub const GameScene = struct {
     }
 
     pub fn fixedUpdate(self: *GameScene, dt: f32) void {
+        if (self.showMenu) return;
+
         Systems.playerMove(&self.world, self.snake, dt);
         Systems.checkCollisions(&self.world);
         Systems.checkAppleEat(self.snake, &self.world);
     }
     pub fn update(self: *GameScene) void {
-        if (rl.isKeyPressed(.space)) {
-            self.sceneManager.scheduleSceneSwitch("game2") catch {};
+        if (rl.isKeyPressed(rl.KeyboardKey.escape)) {
+            self.showMenu = !self.showMenu;
         }
+
+        if (self.showMenu) return;
+
         const dt = rl.getFrameTime();
 
         Systems.gatherInput(&self.world);
@@ -154,6 +164,20 @@ pub const GameScene = struct {
     pub fn renderUI(self: *GameScene) !void {
         // _ = self;
         rl.drawText(rl.textFormat("Score: %1i", .{self.world.state.applesEaten}), 0, 50, 14, .white);
+
+        const menuUi = struct {
+            fn draw(canvas: *ui.UI, scene: *GameScene) void {
+                canvas.beginLayout(.TOP_TO_BOTTOM, .{ .margin = .{ .relative = .init(0.5, 0.5) } });
+                defer canvas.endLayout();
+
+                if (canvas.button("Quit", .{})) {
+                    scene.sceneManager.setExit();
+                }
+            }
+        }.draw;
+        if (self.showMenu) {
+            self.ui.run(self, menuUi);
+        }
     }
     pub fn exit(self: *GameScene) void {
         _ = self;

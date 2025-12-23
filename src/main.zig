@@ -16,14 +16,17 @@ pub fn main() !void {
     const screenHeight = 1080;
 
     rl.initWindow(screenWidth, screenHeight, "Snake Game (Does极)");
+    rl.setExitKey(rl.KeyboardKey.null);
+    rl.toggleFullscreen();
     defer rl.closeWindow();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
 
     var sceneManager = SceneManager.init(gpa.allocator());
+    defer sceneManager.deinit();
+
     try sceneManager.register("game", GameScene);
-    try sceneManager.register("game2", GameScene);
     try sceneManager.register("menu", MenuScene);
     try sceneManager.scheduleSceneSwitch("menu");
     try sceneManager.performSwitch();
@@ -33,7 +36,7 @@ pub fn main() !void {
 
     var accumulator: f32 = 0;
     var alphaDt: f32 = 0;
-    while (!rl.windowShouldClose()) {
+    while (!sceneManager.exit and !rl.windowShouldClose()) {
         accumulator += @min(rl.getFrameTime(), 0.25);
         while (accumulator >= dt) {
             sceneManager.current.fixedUpdate(dt);
@@ -43,7 +46,6 @@ pub fn main() !void {
         sceneManager.current.update();
 
         rl.beginDrawing();
-        rl.clearBackground(rl.Color.black);
 
         try sceneManager.current.render(alphaDt);
         try sceneManager.current.renderUI();
