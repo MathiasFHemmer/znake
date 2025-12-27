@@ -13,16 +13,19 @@ pub const MenuScene = struct {
     sceneManager: *SceneManager,
     camera: rl.Camera3D,
     isAllocated: bool = false,
-    ui: ui.UI,
+    ui: ui.Canvas,
     counter: u32,
     customData: CustomData,
+
+    do: bool = false,
+    do2: bool = false,
 
     pub fn init(allocator: std.mem.Allocator, sceneManager: *SceneManager) !MenuScene {
         return MenuScene{
             .sceneManager = sceneManager,
             .camera = undefined,
             .isAllocated = true,
-            .ui = ui.UI.init(allocator),
+            .ui = ui.Canvas.init(allocator),
             .counter = 0,
             .customData = CustomData{ .sceneManager = sceneManager },
         };
@@ -30,7 +33,7 @@ pub const MenuScene = struct {
 
     pub fn deinit(self: *MenuScene, allocator: std.mem.Allocator) void {
         _ = allocator;
-        self.ui.deinit();
+        _ = self;
     }
 
     pub fn enter(self: *MenuScene) !void {
@@ -41,28 +44,46 @@ pub const MenuScene = struct {
         _ = dt;
     }
     pub fn update(self: *MenuScene) void {
-        _ = self;
+        // _ = self;
+
+        self.do = rl.isKeyDown(.s);
+        self.do2 = rl.isKeyDown(.d);
     }
     pub fn render(self: *MenuScene, alphaDt: f32) !void {
         _ = self;
         _ = alphaDt;
+        rl.clearBackground(rl.Color.black);
     }
     pub fn renderUI(self: *MenuScene) !void {
-        const menuUi = struct {
-            fn draw(canvas: *ui.UI, scene: *MenuScene) void {
-                canvas.beginLayout(.TOP_TO_BOTTOM, .{ .margin = .{ .relative = .init(0.5, 0.5) } });
-                defer canvas.endLayout();
+        self.ui.reset();
 
-                if (canvas.button("Play", .{})) {
-                    scene.sceneManager.scheduleSceneSwitch("game") catch unreachable;
-                }
-                if (canvas.button("Quit", .{})) {
-                    scene.sceneManager.setExit();
-                }
-            }
-        }.draw;
+        self.ui.openScope(ui.Box.init(.{
+            .padding = .{ .bottom = 1, .left = 1, .right = 5, .top = 10 },
+            .gap = 2,
+            .color = rl.Color.pink,
+        }));
 
-        self.ui.run(self, menuUi);
+        self.ui.openScope(ui.Box.init(.{
+            .sizing = .{ .width = .{ .fixed = 200 }, .height = .{ .fixed = 200 } },
+            .color = rl.Color.blue,
+        }));
+        self.ui.closeScope();
+        if (self.do) {
+            self.ui.openScope(ui.Box.init(.{
+                .sizing = .{ .width = .{ .fixed = 100 }, .height = .{ .fixed = 100 } },
+                .color = rl.Color.red,
+            }));
+            self.ui.closeScope();
+        }
+        if (self.do2) {
+            self.ui.openScope(ui.Box.init(.{
+                .sizing = .{ .width = .{ .fixed = 250 }, .height = .{ .fixed = 250 } },
+                .color = rl.Color.green,
+            }));
+            self.ui.closeScope();
+        }
+        self.ui.closeScope();
+        self.ui.draw();
     }
     pub fn exit(self: *MenuScene) void {
         _ = self;

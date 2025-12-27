@@ -23,7 +23,7 @@ pub const GameScene = struct {
     const Self = @This();
 
     sceneManager: *SceneManager,
-    ui: ui.UI,
+    ui: ui.Canvas,
     showMenu: bool,
 
     snake: Entity,
@@ -53,7 +53,7 @@ pub const GameScene = struct {
             .snake = snake,
             .mainTexture = try rl.loadRenderTexture(1920, 1080),
             .world = world,
-            .ui = ui.UI.init(allocator),
+            .ui = ui.Canvas.init(allocator),
             .showMenu = false,
             .camera = rl.Camera3D{
                 .position = rl.Vector3{ .x = 10, .y = 10, .z = 10 },
@@ -69,7 +69,6 @@ pub const GameScene = struct {
     pub fn deinit(self: *GameScene, allocator: std.mem.Allocator) void {
         _ = allocator;
         self.world.deinit();
-        self.ui.deinit();
     }
 
     pub fn enter(self: *GameScene) !void {
@@ -162,22 +161,7 @@ pub const GameScene = struct {
         drawWorldAxes(self.camera);
     }
     pub fn renderUI(self: *GameScene) !void {
-        // _ = self;
-        rl.drawText(rl.textFormat("Score: %1i", .{self.world.state.applesEaten}), 0, 50, 14, .white);
-
-        const menuUi = struct {
-            fn draw(canvas: *ui.UI, scene: *GameScene) void {
-                canvas.beginLayout(.TOP_TO_BOTTOM, .{ .margin = .{ .relative = .init(0.5, 0.5) } });
-                defer canvas.endLayout();
-
-                if (canvas.button("Quit", .{})) {
-                    scene.sceneManager.setExit();
-                }
-            }
-        }.draw;
-        if (self.showMenu) {
-            self.ui.run(self, menuUi);
-        }
+        _ = self;
     }
     pub fn exit(self: *GameScene) void {
         _ = self;

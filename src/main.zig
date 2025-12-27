@@ -12,12 +12,12 @@ pub const std_options: std.Options = .{
 };
 
 pub fn main() !void {
-    const screenWidth = 1920;
-    const screenHeight = 1080;
+    const screenWidth = 960;
+    const screenHeight = 720;
 
     rl.initWindow(screenWidth, screenHeight, "Snake Game (Does极)");
-    rl.setExitKey(rl.KeyboardKey.null);
-    rl.toggleFullscreen();
+    // rl.setExitKey(rl.KeyboardKey.null);
+    // rl.toggleFullscreen();
     defer rl.closeWindow();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

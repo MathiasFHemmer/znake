@@ -1,235 +1,200 @@
 const std = @import("std");
 const rl = @import("raylib");
+const math = @import("../math/math.zig");
 
-pub const LayoutDirection = enum {
-    LEFT_TO_RIGHT,
-    TOP_TO_BOTTOM,
+const Layout = enum {
+    LeftToRight,
+    TopToBottom,
 };
 
-pub const Margin = union(enum) {
-    fixed: rl.Vector2,
-    relative: rl.Vector2,
-};
+pub const Dimension = union(enum) {
+    const Self = @This();
 
-const Phase = enum {
-    measure,
-    render,
-};
+    fit: f32,
+    fixed: f32,
 
-const LayoutNode = struct {
-    origin: rl.Vector2,
-    cursor: rl.Vector2,
-    measured_size: rl.Vector2,
-    layout: LayoutDirection,
-    margin: Margin,
-
-    resolved_origin: rl.Vector2,
-};
-
-pub const UI = struct {
-    allocator: std.mem.Allocator,
-
-    mouse_pos: rl.Vector2,
-    mouse_down: bool,
-
-    hot: ?u64 = null,
-    active: ?u64 = null,
-
-    layouts: std.ArrayList(LayoutNode),
-    layout_stack_len: usize = 0,
-
-    phase: Phase = .measure,
-
-    pub fn init(allocator: std.mem.Allocator) UI {
-        return .{
-            .allocator = allocator,
-            .mouse_pos = .{ .x = 0, .y = 0 },
-            .mouse_down = false,
-            .layouts = std.ArrayList(LayoutNode).initCapacity(allocator, 32) catch unreachable,
+    pub fn add(self: Self, value: f32) Dimension {
+        return switch (self) {
+            .fit => .{ .fit = self.fit + value },
+            .fixed => .{ .fixed = self.fixed + value },
         };
     }
 
-    pub fn deinit(self: *UI) void {
-        self.layouts.deinit(self.allocator);
-    }
-
-    // ---------------- frame ----------------
-
-    pub fn run(
-        self: *UI,
-        ctx: anytype,
-        drawFn: fn (*UI, @TypeOf(ctx)) void,
-    ) void {
-        // input
-        self.mouse_pos = rl.getMousePosition();
-        self.mouse_down = rl.isMouseButtonDown(.left);
-        self.hot = null;
-
-        // -------- measure pass --------
-        self.phase = .measure;
-        self.layout_stack_len = 0;
-        self.layouts.clearRetainingCapacity();
-
-        drawFn(self, ctx);
-
-        self.resolveLayouts();
-
-        // -------- render pass --------
-        self.phase = .render;
-        self.layout_stack_len = 0;
-
-        for (self.layouts.items) |*n| {
-            n.cursor = n.resolved_origin;
-        }
-
-        drawFn(self, ctx);
-
-        if (!self.mouse_down) {
-            self.active = null;
-        }
-    }
-
-    // ---------------- layout ----------------
-
-    pub fn beginLayout(
-        self: *UI,
-        layout: LayoutDirection,
-        opts: struct { margin: Margin = .{ .fixed = .init(0, 0) } },
-    ) void {
-        const index = self.layout_stack_len;
-        self.layout_stack_len += 1;
-
-        if (self.phase == .measure) {
-            const origin =
-                if (index == 0)
-                    rl.Vector2{ .x = 0, .y = 0 }
-                else
-                    self.layouts.items[index - 1].cursor;
-
-            self.layouts.append(self.allocator, .{
-                .origin = origin,
-                .cursor = origin,
-                .measured_size = .{ .x = 0, .y = 0 },
-                .layout = layout,
-                .margin = opts.margin,
-                .resolved_origin = origin,
-            }) catch unreachable;
-        }
-    }
-
-    pub fn endLayout(self: *UI) void {
-        self.layout_stack_len -= 1;
-
-        if (self.phase == .measure and self.layout_stack_len > 0) {
-            const child = &self.layouts.items[self.layout_stack_len];
-            const parent = &self.layouts.items[self.layout_stack_len - 1];
-            accumulateSize(parent, child.measured_size);
-            advanceCursor(parent, child.measured_size);
-        }
-    }
-
-    fn resolveLayouts(self: *UI) void {
-        const screen_w: f32 = @floatFromInt(rl.getScreenWidth());
-        const screen_h: f32 = @floatFromInt(rl.getScreenHeight());
-
-        for (self.layouts.items) |*n| {
-            var origin = n.origin;
-
-            switch (n.margin) {
-                .fixed => |v| {
-                    origin.x += v.x;
-                    origin.y += v.y;
-                },
-                .relative => |r| {
-                    origin.x = (screen_w - n.measured_size.x) * r.x;
-                    origin.y = (screen_h - n.measured_size.y) * r.y;
-                },
-            }
-
-            n.resolved_origin = origin;
-        }
-    }
-
-    // ---------------- widgets ----------------
-
-    pub fn button(
-        self: *UI,
-        label: [:0]const u8,
-        opts: struct {
-            size: rl.Vector2 = .{ .x = 120, .y = 32 },
-        },
-    ) bool {
-        const id = idFromLabel(label);
-        const node = &self.layouts.items[self.layout_stack_len - 1];
-
-        const pos = node.cursor;
-        const size = opts.size;
-
-        if (self.phase == .measure) {
-            accumulateSize(node, size);
-            advanceCursor(node, size);
-            return false;
-        }
-
-        const bounds = rl.Rectangle{
-            .x = pos.x,
-            .y = pos.y,
-            .width = size.x,
-            .height = size.y,
+    pub fn unpackDimension(dimension: Dimension) f32 {
+        return switch (dimension) {
+            .fit => dimension.fit,
+            .fixed => dimension.fixed,
         };
-
-        const hovered = rl.checkCollisionPointRec(self.mouse_pos, bounds);
-
-        if (hovered) {
-            self.hot = id;
-            if (self.mouse_down and self.active == null) {
-                self.active = id;
-            }
-        }
-
-        const clicked = !self.mouse_down and self.active == id and hovered;
-        if (clicked) self.active = null;
-
-        var color = rl.Color.gray;
-        if (self.hot == id) color = rl.Color.light_gray;
-        if (self.active == id) color = rl.Color.dark_gray;
-
-        rl.drawRectangleRec(bounds, color);
-        rl.drawText(
-            label,
-            @intFromFloat(pos.x + 8),
-            @intFromFloat(pos.y + size.y / 2 - 8),
-            16,
-            rl.Color.black,
-        );
-
-        advanceCursor(node, size);
-        return clicked;
     }
 };
 
-// ---------------- helpers ----------------
+const Position = math.Vector2;
+const Padding = struct { top: f32 = 0, bottom: f32 = 0, left: f32 = 0, right: f32 = 0 };
 
-fn idFromLabel(label: [:0]const u8) u64 {
-    return std.hash.Wyhash.hash(0, label);
-}
+const Sizing = struct {
+    width: Dimension = .{ .fit = 0 },
+    height: Dimension = .{ .fit = 0 },
+};
 
-fn advanceCursor(node: *LayoutNode, size: rl.Vector2) void {
-    switch (node.layout) {
-        .LEFT_TO_RIGHT => node.cursor.x += size.x,
-        .TOP_TO_BOTTOM => node.cursor.y += size.y,
-    }
-}
+pub const Box = struct {
+    const Self = @This();
 
-fn accumulateSize(node: *LayoutNode, size: rl.Vector2) void {
-    switch (node.layout) {
-        .LEFT_TO_RIGHT => {
-            node.measured_size.x += size.x;
-            node.measured_size.y = @max(node.measured_size.y, size.y);
+    // Tree
+    parent: ?*Self = null,
+    children: std.ArrayList(Self) = .empty,
+
+    // Layout
+    position: Position = .empty,
+    sizing: Sizing = .{},
+    padding: Padding = .{},
+    gap: f32 = 0,
+    layout: Layout = .LeftToRight,
+
+    // Appearence:
+    color: rl.Color = rl.Color.pink,
+
+    pub fn init(
+        opt: struct {
+            layout: Layout = .LeftToRight,
+            position: Position = .empty,
+            sizing: Sizing = .{},
+            padding: Padding = .{},
+            gap: f32 = 0,
+            color: rl.Color = rl.Color.pink,
         },
-        .TOP_TO_BOTTOM => {
-            node.measured_size.y += size.y;
-            node.measured_size.x = @max(node.measured_size.x, size.x);
-        },
+    ) Self {
+        return Self{
+            .parent = null,
+            .children = .empty,
+            .layout = opt.layout,
+            .position = opt.position,
+            .sizing = opt.sizing,
+            .padding = opt.padding,
+            .gap = opt.gap,
+            .color = opt.color,
+        };
     }
-}
+
+    pub const empty: Self = .{};
+};
+
+pub const Canvas = struct {
+    const Self = @This();
+
+    const StackItem = struct {
+        box: *Box,
+        elementPosition: Position,
+        cursorPosition: Position,
+    };
+
+    arena: std.heap.ArenaAllocator,
+    drawStack: std.ArrayList(StackItem),
+
+    root: ?Box,
+    current: ?*Box,
+
+    pub fn init(allocator: std.mem.Allocator) Self {
+        return Self{
+            .arena = std.heap.ArenaAllocator.init(allocator),
+            .drawStack = .empty,
+            .current = null,
+            .root = null,
+        };
+    }
+
+    pub fn openScope(self: *Self, element: Box) void {
+        if (self.current) |cur| {
+            self.current = cur.children.addOne(self.arena.allocator()) catch unreachable;
+            self.current.?.* = element;
+            self.current.?.parent = cur;
+        } else {
+            self.root = element;
+            self.current = &self.root.?;
+            self.current.?.* = element;
+        }
+    }
+
+    pub fn closeScope(self: *Self) void {
+        const element = self.current.?;
+        const paddingH = element.padding.top + element.padding.bottom;
+        const paddingW = element.padding.left + element.padding.right;
+
+        element.sizing.width = element.sizing.width.add(paddingW);
+        element.sizing.height = element.sizing.height.add(paddingH);
+
+        if (element.parent) |parent| {
+            const gap = @as(f32, @floatFromInt((@max(parent.children.items.len - 1, 0)))) * parent.gap;
+
+            switch (parent.layout) {
+                .LeftToRight => {
+                    switch (parent.sizing.width) {
+                        .fit => parent.sizing.width.fit += element.sizing.width.unpackDimension() + gap,
+                        .fixed => {},
+                    }
+                    switch (parent.sizing.height) {
+                        .fit => parent.sizing.height.fit = @max(element.sizing.height.unpackDimension(), parent.sizing.height.unpackDimension()),
+                        .fixed => {},
+                    }
+                },
+                .TopToBottom => {
+                    switch (parent.sizing.width) {
+                        .fit => parent.sizing.height.fit += element.sizing.height.unpackDimension() + gap,
+                        .fixed => {},
+                    }
+                    switch (parent.sizing.height) {
+                        .fit => parent.sizing.width.fit = @max(element.sizing.width.unpackDimension(), parent.sizing.width.unpackDimension()),
+                        .fixed => {},
+                    }
+                },
+            }
+
+            self.current = self.current.?.parent;
+        }
+    }
+
+    pub fn reset(self: *Self) void {
+        _ = self.arena.reset(.retain_capacity);
+        self.drawStack = .empty;
+        self.root = null;
+        self.current = null;
+    }
+
+    pub fn draw(self: *Self) void {
+        if (self.root == null) return;
+
+        // Push root
+        self.drawStack.append(self.arena.allocator(), .{
+            .box = &self.root.?,
+            .elementPosition = self.root.?.position,
+            .cursorPosition = .init(self.root.?.padding.left, self.root.?.padding.top),
+        }) catch unreachable;
+
+        while (self.drawStack.items.len > 0) {
+            var item = self.drawStack.pop().?;
+            const box = item.box;
+
+            rl.drawRectangle(
+                @intFromFloat(item.elementPosition.x),
+                @intFromFloat(item.elementPosition.y),
+                @intFromFloat(box.sizing.width.unpackDimension()),
+                @intFromFloat(box.sizing.height.unpackDimension()),
+                box.color,
+            );
+
+            for (box.children.items) |*child| {
+                const childElementPosition = item.elementPosition.add(item.cursorPosition);
+
+                self.drawStack.append(self.arena.allocator(), .{
+                    .box = child,
+                    .elementPosition = childElementPosition,
+                    .cursorPosition = .init(child.padding.left, child.padding.top),
+                }) catch unreachable;
+
+                switch (box.layout) {
+                    .LeftToRight => item.cursorPosition.x += child.sizing.width.unpackDimension() + box.gap,
+                    .TopToBottom => item.cursorPosition.y += child.sizing.height.unpackDimension() + box.gap,
+                }
+            }
+        }
+    }
+};
