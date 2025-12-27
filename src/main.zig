@@ -15,6 +15,7 @@ pub fn main() !void {
     const screenWidth = 960;
     const screenHeight = 720;
 
+    rl.setConfigFlags(.{ .window_resizable = true });
     rl.initWindow(screenWidth, screenHeight, "Snake Game (Does极)");
     // rl.setExitKey(rl.KeyboardKey.null);
     // rl.toggleFullscreen();

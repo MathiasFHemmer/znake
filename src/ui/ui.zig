@@ -122,13 +122,17 @@ pub const Canvas = struct {
         element.sizing.width = element.sizing.width.add(paddingW);
         element.sizing.height = element.sizing.height.add(paddingH);
 
-        if (element.parent) |parent| {
-            const gap = @as(f32, @floatFromInt((@max(parent.children.items.len - 1, 0)))) * parent.gap;
+        const gap = @as(f32, @floatFromInt((@max(element.children.items.len, 1) - 1))) * element.gap;
+        switch (element.layout) {
+            .LeftToRight => element.sizing.width = element.sizing.width.add(gap),
+            .TopToBottom => element.sizing.height = element.sizing.height.add(gap),
+        }
 
+        if (element.parent) |parent| {
             switch (parent.layout) {
                 .LeftToRight => {
                     switch (parent.sizing.width) {
-                        .fit => parent.sizing.width.fit += element.sizing.width.unpackDimension() + gap,
+                        .fit => parent.sizing.width.fit += element.sizing.width.unpackDimension(),
                         .fixed => {},
                     }
                     switch (parent.sizing.height) {
@@ -137,11 +141,11 @@ pub const Canvas = struct {
                     }
                 },
                 .TopToBottom => {
-                    switch (parent.sizing.width) {
-                        .fit => parent.sizing.height.fit += element.sizing.height.unpackDimension() + gap,
+                    switch (parent.sizing.height) {
+                        .fit => parent.sizing.height.fit += element.sizing.height.unpackDimension(),
                         .fixed => {},
                     }
-                    switch (parent.sizing.height) {
+                    switch (parent.sizing.width) {
                         .fit => parent.sizing.width.fit = @max(element.sizing.width.unpackDimension(), parent.sizing.width.unpackDimension()),
                         .fixed => {},
                     }
@@ -182,11 +186,9 @@ pub const Canvas = struct {
             );
 
             for (box.children.items) |*child| {
-                const childElementPosition = item.elementPosition.add(item.cursorPosition);
-
                 self.drawStack.append(self.arena.allocator(), .{
                     .box = child,
-                    .elementPosition = childElementPosition,
+                    .elementPosition = item.elementPosition.add(item.cursorPosition),
                     .cursorPosition = .init(child.padding.left, child.padding.top),
                 }) catch unreachable;
 

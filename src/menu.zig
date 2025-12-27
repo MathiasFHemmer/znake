@@ -48,6 +48,9 @@ pub const MenuScene = struct {
 
         self.do = rl.isKeyDown(.s);
         self.do2 = rl.isKeyDown(.d);
+        if (rl.isKeyReleased(.space)) {
+            self.counter += 1;
+        }
     }
     pub fn render(self: *MenuScene, alphaDt: f32) !void {
         _ = self;
@@ -62,24 +65,43 @@ pub const MenuScene = struct {
             .gap = 2,
             .color = rl.Color.pink,
         }));
-
-        self.ui.openScope(ui.Box.init(.{
-            .sizing = .{ .width = .{ .fixed = 200 }, .height = .{ .fixed = 200 } },
-            .color = rl.Color.blue,
-        }));
-        self.ui.closeScope();
-        if (self.do) {
+        {
             self.ui.openScope(ui.Box.init(.{
-                .sizing = .{ .width = .{ .fixed = 100 }, .height = .{ .fixed = 100 } },
-                .color = rl.Color.red,
+                .sizing = .{ .width = .{ .fixed = 200 }, .height = .{ .fixed = 200 } },
+                .color = rl.Color.blue,
             }));
             self.ui.closeScope();
-        }
-        if (self.do2) {
+
+            if (self.do) {
+                self.ui.openScope(ui.Box.init(.{
+                    .sizing = .{ .width = .{ .fixed = 100 }, .height = .{ .fixed = 100 } },
+                    .color = rl.Color.red,
+                }));
+                self.ui.closeScope();
+            }
+            if (self.do2) {
+                self.ui.openScope(ui.Box.init(.{
+                    .sizing = .{ .width = .{ .fixed = 250 }, .height = .{ .fixed = 250 } },
+                    .color = rl.Color.green,
+                }));
+                self.ui.closeScope();
+            }
+
             self.ui.openScope(ui.Box.init(.{
-                .sizing = .{ .width = .{ .fixed = 250 }, .height = .{ .fixed = 250 } },
-                .color = rl.Color.green,
+                .layout = .TopToBottom,
+                .padding = .{ .bottom = 10, .left = 10, .right = 10, .top = 10 },
+                .sizing = .{ .width = .{ .fixed = 200 }, .height = .{ .fit = 0 } },
+                .gap = 4,
+                .color = rl.Color.dark_purple,
             }));
+            for (0..self.counter) |index| {
+                self.ui.openScope(ui.Box.init(.{
+                    .layout = .TopToBottom,
+                    .sizing = .{ .width = .{ .fixed = 50 }, .height = .{ .fixed = 50 } },
+                    .color = rl.Color.gold.fade(@as(f32, @floatFromInt(20 - index)) / 20.0),
+                }));
+                self.ui.closeScope();
+            }
             self.ui.closeScope();
         }
         self.ui.closeScope();
