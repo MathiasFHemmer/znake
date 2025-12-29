@@ -7,23 +7,68 @@ const Layout = enum {
     TopToBottom,
 };
 
+pub const Constrain = struct {
+    const Self = @This();
+
+    value: f32 = 0,
+    min: f32 = std.math.floatMin(f32),
+    max: f32 = std.math.floatMax(f32),
+
+    pub const empty: Self = .{};
+};
+
 pub const Dimension = union(enum) {
     const Self = @This();
 
-    fit: f32,
-    fixed: f32,
+    fit: Constrain,
+    fixed: Constrain,
 
-    pub fn add(self: Self, value: f32) Dimension {
+    pub const empty: Self = .{
+        .fit = .empty,
+    };
+
+    pub fn add(self: Self, value: f32) Self {
         return switch (self) {
-            .fit => .{ .fit = self.fit + value },
-            .fixed => .{ .fixed = self.fixed + value },
+            .fit => .{
+                .fit = .{
+                    .value = self.fit.value + value,
+                    .min = self.fit.min,
+                    .max = self.fit.max,
+                },
+            },
+            .fixed => .{
+                .fixed = .{
+                    .value = self.fixed.value + value,
+                    .min = self.fixed.min,
+                    .max = self.fixed.max,
+                },
+            },
         };
     }
 
-    pub fn unpackDimension(dimension: Dimension) f32 {
+    pub inline fn applyConstrain(self: Self) Self {
+        return switch (self) {
+            .fit => |v| .{
+                .fit = .{
+                    .value = std.math.clamp(v.value, v.min, v.max),
+                    .min = v.min,
+                    .max = v.max,
+                },
+            },
+            .fixed => |v| .{
+                .fixed = .{
+                    .value = std.math.clamp(v.value, v.min, v.max),
+                    .min = v.min,
+                    .max = v.max,
+                },
+            },
+        };
+    }
+
+    pub fn unpackDimension(dimension: Self) f32 {
         return switch (dimension) {
-            .fit => dimension.fit,
-            .fixed => dimension.fixed,
+            .fit => dimension.fit.value,
+            .fixed => dimension.fixed.value,
         };
     }
 };
@@ -32,8 +77,8 @@ const Position = math.Vector2;
 const Padding = struct { top: f32 = 0, bottom: f32 = 0, left: f32 = 0, right: f32 = 0 };
 
 const Sizing = struct {
-    width: Dimension = .{ .fit = 0 },
-    height: Dimension = .{ .fit = 0 },
+    width: Dimension = .empty,
+    height: Dimension = .empty,
 };
 
 pub const Box = struct {
@@ -116,43 +161,85 @@ pub const Canvas = struct {
 
     pub fn closeScope(self: *Self) void {
         const element = self.current.?;
+
+        var main_cursor: f32 = 0;
+        var cross_cursor: f32 = 0;
+        var line_cross_max: f32 = 0;
+
+        const main_max = switch (element.layout) {
+            .LeftToRight => switch (element.sizing.width) {
+                .fixed => |v| v.value,
+                .fit => |v| v.max,
+            },
+            .TopToBottom => switch (element.sizing.height) {
+                .fixed => |v| v.value,
+                .fit => |v| v.max,
+            },
+        };
+
+        for (element.children.items) |*child| {
+            const child_main = switch (element.layout) {
+                .LeftToRight => child.sizing.width.unpackDimension(),
+                .TopToBottom => child.sizing.height.unpackDimension(),
+            };
+
+            const child_cross = switch (element.layout) {
+                .LeftToRight => child.sizing.height.unpackDimension(),
+                .TopToBottom => child.sizing.width.unpackDimension(),
+            };
+
+            if (main_cursor > 0 and main_cursor + child_main > main_max) {
+                cross_cursor += line_cross_max + element.gap;
+                main_cursor = 0;
+                line_cross_max = 0;
+            }
+
+            main_cursor += child_main + element.gap;
+            line_cross_max = @max(line_cross_max, child_cross);
+        }
+
+        // finalize last line
+        cross_cursor += line_cross_max;
+
         const paddingH = element.padding.top + element.padding.bottom;
         const paddingW = element.padding.left + element.padding.right;
-
-        element.sizing.width = element.sizing.width.add(paddingW);
-        element.sizing.height = element.sizing.height.add(paddingH);
 
         const gap = @as(f32, @floatFromInt((@max(element.children.items.len, 1) - 1))) * element.gap;
         switch (element.layout) {
             .LeftToRight => element.sizing.width = element.sizing.width.add(gap),
             .TopToBottom => element.sizing.height = element.sizing.height.add(gap),
         }
+        element.sizing.width = element.sizing.width.add(paddingW).applyConstrain();
+        element.sizing.height = element.sizing.height.add(paddingH).applyConstrain();
 
         if (element.parent) |parent| {
+            const w = element.sizing.width.unpackDimension();
+            const h = element.sizing.height.unpackDimension();
+
             switch (parent.layout) {
                 .LeftToRight => {
                     switch (parent.sizing.width) {
-                        .fit => parent.sizing.width.fit += element.sizing.width.unpackDimension(),
+                        .fit => parent.sizing.width.fit.value += w,
                         .fixed => {},
                     }
                     switch (parent.sizing.height) {
-                        .fit => parent.sizing.height.fit = @max(element.sizing.height.unpackDimension(), parent.sizing.height.unpackDimension()),
+                        .fit => parent.sizing.height.fit.value = @max(parent.sizing.height.fit.value, h),
                         .fixed => {},
                     }
                 },
                 .TopToBottom => {
                     switch (parent.sizing.height) {
-                        .fit => parent.sizing.height.fit += element.sizing.height.unpackDimension(),
+                        .fit => parent.sizing.height.fit.value += h,
                         .fixed => {},
                     }
                     switch (parent.sizing.width) {
-                        .fit => parent.sizing.width.fit = @max(element.sizing.width.unpackDimension(), parent.sizing.width.unpackDimension()),
+                        .fit => parent.sizing.width.fit.value = @max(parent.sizing.width.fit.value, w),
                         .fixed => {},
                     }
                 },
             }
 
-            self.current = self.current.?.parent;
+            self.current = parent;
         }
     }
 
@@ -166,36 +253,91 @@ pub const Canvas = struct {
     pub fn draw(self: *Self) void {
         if (self.root == null) return;
 
-        // Push root
         self.drawStack.append(self.arena.allocator(), .{
             .box = &self.root.?,
             .elementPosition = self.root.?.position,
-            .cursorPosition = .init(self.root.?.padding.left, self.root.?.padding.top),
+            .cursorPosition = .init(
+                self.root.?.padding.left,
+                self.root.?.padding.top,
+            ),
         }) catch unreachable;
 
         while (self.drawStack.items.len > 0) {
             var item = self.drawStack.pop().?;
             const box = item.box;
 
+            const box_width = box.sizing.width.unpackDimension();
+            const box_height = box.sizing.height.unpackDimension();
+
             rl.drawRectangle(
                 @intFromFloat(item.elementPosition.x),
                 @intFromFloat(item.elementPosition.y),
-                @intFromFloat(box.sizing.width.unpackDimension()),
-                @intFromFloat(box.sizing.height.unpackDimension()),
+                @intFromFloat(box_width),
+                @intFromFloat(box_height),
                 box.color,
             );
 
+            var cursor = item.cursorPosition;
+            var line_cross_max: f32 = 0;
+
+            const main_limit: f32 = switch (box.layout) {
+                .LeftToRight => switch (box.sizing.width) {
+                    .fixed => |v| v.value,
+                    .fit => |v| v.max,
+                },
+                .TopToBottom => switch (box.sizing.height) {
+                    .fixed => |v| v.value,
+                    .fit => |v| v.max,
+                },
+            };
+
+            const initial_cursor = cursor;
+
             for (box.children.items) |*child| {
+                const child_main = switch (box.layout) {
+                    .LeftToRight => child.sizing.width.unpackDimension(),
+                    .TopToBottom => child.sizing.height.unpackDimension(),
+                };
+
+                const child_cross = switch (box.layout) {
+                    .LeftToRight => child.sizing.height.unpackDimension(),
+                    .TopToBottom => child.sizing.width.unpackDimension(),
+                };
+
+                const current_main = switch (box.layout) {
+                    .LeftToRight => cursor.x - initial_cursor.x,
+                    .TopToBottom => cursor.y - initial_cursor.y,
+                };
+
+                if (current_main > 0 and current_main + child_main > main_limit) {
+                    switch (box.layout) {
+                        .LeftToRight => {
+                            cursor.x = initial_cursor.x;
+                            cursor.y += line_cross_max + box.gap;
+                        },
+                        .TopToBottom => {
+                            cursor.y = initial_cursor.y;
+                            cursor.x += line_cross_max + box.gap;
+                        },
+                    }
+                    line_cross_max = 0;
+                }
+
                 self.drawStack.append(self.arena.allocator(), .{
                     .box = child,
-                    .elementPosition = item.elementPosition.add(item.cursorPosition),
-                    .cursorPosition = .init(child.padding.left, child.padding.top),
+                    .elementPosition = item.elementPosition.add(cursor),
+                    .cursorPosition = .init(
+                        child.padding.left,
+                        child.padding.top,
+                    ),
                 }) catch unreachable;
 
                 switch (box.layout) {
-                    .LeftToRight => item.cursorPosition.x += child.sizing.width.unpackDimension() + box.gap,
-                    .TopToBottom => item.cursorPosition.y += child.sizing.height.unpackDimension() + box.gap,
+                    .LeftToRight => cursor.x += child_main + box.gap,
+                    .TopToBottom => cursor.y += child_main + box.gap,
                 }
+
+                line_cross_max = @max(line_cross_max, child_cross);
             }
         }
     }

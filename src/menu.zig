@@ -51,6 +51,9 @@ pub const MenuScene = struct {
         if (rl.isKeyReleased(.space)) {
             self.counter += 1;
         }
+        if (rl.isKeyReleased(.x)) {
+            self.counter -= 1;
+        }
     }
     pub fn render(self: *MenuScene, alphaDt: f32) !void {
         _ = self;
@@ -61,27 +64,34 @@ pub const MenuScene = struct {
         self.ui.reset();
 
         self.ui.openScope(ui.Box.init(.{
+            .sizing = .{
+                .width = .{ .fit = .{ .min = 650, .max = 650 } },
+                .height = .{ .fit = .{ .max = 400 } },
+            },
             .padding = .{ .bottom = 1, .left = 1, .right = 5, .top = 10 },
             .gap = 2,
             .color = rl.Color.pink,
         }));
         {
             self.ui.openScope(ui.Box.init(.{
-                .sizing = .{ .width = .{ .fixed = 200 }, .height = .{ .fixed = 200 } },
+                .sizing = .{
+                    .width = .{ .fixed = .{ .value = 200 } },
+                    .height = .{ .fixed = .{ .value = 200 } },
+                },
                 .color = rl.Color.blue,
             }));
             self.ui.closeScope();
 
             if (self.do) {
                 self.ui.openScope(ui.Box.init(.{
-                    .sizing = .{ .width = .{ .fixed = 100 }, .height = .{ .fixed = 100 } },
+                    .sizing = .{ .width = .{ .fixed = .{ .value = 100 } }, .height = .{ .fixed = .{ .value = 100 } } },
                     .color = rl.Color.red,
                 }));
                 self.ui.closeScope();
             }
             if (self.do2) {
                 self.ui.openScope(ui.Box.init(.{
-                    .sizing = .{ .width = .{ .fixed = 250 }, .height = .{ .fixed = 250 } },
+                    .sizing = .{ .width = .{ .fixed = .{ .value = 250 } }, .height = .{ .fixed = .{ .value = 250 } } },
                     .color = rl.Color.green,
                 }));
                 self.ui.closeScope();
@@ -89,15 +99,15 @@ pub const MenuScene = struct {
 
             self.ui.openScope(ui.Box.init(.{
                 .layout = .TopToBottom,
-                .padding = .{ .bottom = 10, .left = 10, .right = 10, .top = 10 },
-                .sizing = .{ .width = .{ .fixed = 200 }, .height = .{ .fit = 0 } },
+                // .padding = .{ .bottom = 10, .left = 10, .right = 10, .top = 10 },
+                .sizing = .{ .height = .{ .fit = .{ .max = 250 } } },
                 .gap = 4,
                 .color = rl.Color.dark_purple,
             }));
             for (0..self.counter) |index| {
                 self.ui.openScope(ui.Box.init(.{
                     .layout = .TopToBottom,
-                    .sizing = .{ .width = .{ .fixed = 50 }, .height = .{ .fixed = 50 } },
+                    .sizing = .{ .width = .{ .fixed = .{ .value = 50 } }, .height = .{ .fixed = .{ .value = 50 } } },
                     .color = rl.Color.gold.fade(@as(f32, @floatFromInt(20 - index)) / 20.0),
                 }));
                 self.ui.closeScope();
