@@ -61,16 +61,18 @@ pub const MenuScene = struct {
         rl.clearBackground(rl.Color.black);
     }
     pub fn renderUI(self: *MenuScene) !void {
-        self.ui.reset();
+        self.ui.syncScreenSize(@floatFromInt(rl.getScreenWidth()), @floatFromInt(rl.getScreenHeight()));
 
+        self.ui.beginLayout();
         self.ui.openScope(ui.Box.init(.{
+            .layout = .TopToBottom,
             .sizing = .{
                 .width = .{ .fit = .{ .min = 650, .max = 650 } },
-                .height = .{ .fit = .{ .max = 400 } },
+                .height = .{ .fit = .{ .min = 650 } },
             },
-            .padding = .{ .bottom = 1, .left = 1, .right = 5, .top = 10 },
+            .padding = .{ .bottom = 4, .left = 4, .right = 5, .top = 10 },
             .gap = 2,
-            .color = rl.Color.pink,
+            .color = rl.Color.dark_purple,
         }));
         {
             self.ui.openScope(ui.Box.init(.{
@@ -84,7 +86,7 @@ pub const MenuScene = struct {
 
             if (self.do) {
                 self.ui.openScope(ui.Box.init(.{
-                    .sizing = .{ .width = .{ .fixed = .{ .value = 100 } }, .height = .{ .fixed = .{ .value = 100 } } },
+                    .sizing = .{ .width = .{ .fixed = .{ .value = 100 } }, .height = .{ .grow = .{ .value = 0 } } },
                     .color = rl.Color.red,
                 }));
                 self.ui.closeScope();
@@ -97,13 +99,6 @@ pub const MenuScene = struct {
                 self.ui.closeScope();
             }
 
-            self.ui.openScope(ui.Box.init(.{
-                .layout = .TopToBottom,
-                // .padding = .{ .bottom = 10, .left = 10, .right = 10, .top = 10 },
-                .sizing = .{ .height = .{ .fit = .{ .max = 250 } } },
-                .gap = 4,
-                .color = rl.Color.dark_purple,
-            }));
             for (0..self.counter) |index| {
                 self.ui.openScope(ui.Box.init(.{
                     .layout = .TopToBottom,
@@ -112,10 +107,9 @@ pub const MenuScene = struct {
                 }));
                 self.ui.closeScope();
             }
-            self.ui.closeScope();
         }
         self.ui.closeScope();
-        self.ui.draw();
+        self.ui.endLayout();
     }
     pub fn exit(self: *MenuScene) void {
         _ = self;

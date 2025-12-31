@@ -22,6 +22,7 @@ pub const Dimension = union(enum) {
 
     fit: Constrain,
     fixed: Constrain,
+    grow: Constrain,
 
     pub const empty: Self = .{
         .fit = .empty,
@@ -43,6 +44,39 @@ pub const Dimension = union(enum) {
                     .max = self.fixed.max,
                 },
             },
+            .grow => |v| .{
+                .grow = .{
+                    .value = v.value + value,
+                    .min = v.min,
+                    .max = v.max,
+                },
+            },
+        };
+    }
+
+    pub fn set(self: Self, value: f32) Self {
+        return switch (self) {
+            .fit => |v| .{
+                .fit = .{
+                    .value = value,
+                    .min = v.min,
+                    .max = v.max,
+                },
+            },
+            .fixed => |v| .{
+                .fixed = .{
+                    .value = value,
+                    .min = v.min,
+                    .max = v.max,
+                },
+            },
+            .grow => |v| .{
+                .grow = .{
+                    .value = value,
+                    .min = v.min,
+                    .max = v.max,
+                },
+            },
         };
     }
 
@@ -62,6 +96,13 @@ pub const Dimension = union(enum) {
                     .max = v.max,
                 },
             },
+            .grow => |v| .{
+                .grow = .{
+                    .value = std.math.clamp(v.value, v.min, v.max),
+                    .min = v.min,
+                    .max = v.max,
+                },
+            },
         };
     }
 
@@ -69,12 +110,35 @@ pub const Dimension = union(enum) {
         return switch (dimension) {
             .fit => dimension.fit.value,
             .fixed => dimension.fixed.value,
+            .grow => |g| g.value,
+        };
+    }
+
+    pub fn unpackMax(dimension: Self) f32 {
+        return switch (dimension) {
+            .fit => |v| v.max,
+            .fixed => |v| v.max,
+            .grow => |v| v.max,
+        };
+    }
+
+    pub fn unpackMin(dimension: Self) f32 {
+        return switch (dimension) {
+            .fit => |v| v.min,
+            .fixed => |v| v.min,
+            .grow => |v| v.min,
         };
     }
 };
 
 const Position = math.Vector2;
-const Padding = struct { top: f32 = 0, bottom: f32 = 0, left: f32 = 0, right: f32 = 0 };
+
+const Padding = struct {
+    top: f32 = 0,
+    bottom: f32 = 0,
+    left: f32 = 0,
+    right: f32 = 0,
+};
 
 const Sizing = struct {
     width: Dimension = .empty,
@@ -132,7 +196,11 @@ pub const Canvas = struct {
         cursorPosition: Position,
     };
 
+    screenWidth: f32 = 0,
+    screenHeight: f32 = 0,
+
     arena: std.heap.ArenaAllocator,
+    growStack: std.ArrayList(*Box),
     drawStack: std.ArrayList(StackItem),
 
     root: ?Box,
@@ -142,9 +210,30 @@ pub const Canvas = struct {
         return Self{
             .arena = std.heap.ArenaAllocator.init(allocator),
             .drawStack = .empty,
+            .growStack = .empty,
             .current = null,
             .root = null,
         };
+    }
+
+    pub fn syncScreenSize(self: *Self, w: f32, h: f32) void {
+        self.screenHeight = h;
+        self.screenWidth = w;
+    }
+
+    pub fn beginLayout(self: *Self) void {
+        self.reset();
+
+        self.openScope(.init(.{
+            .sizing = .{ .width = .{ .fixed = .{ .value = self.screenWidth } }, .height = .{ .fixed = .{ .value = self.screenHeight } } },
+        }));
+    }
+
+    pub fn endLayout(self: *Self) void {
+        self.closeScope();
+        self.grow(true);
+        self.grow(false);
+        self.draw();
     }
 
     pub fn openScope(self: *Self, element: Box) void {
@@ -161,45 +250,6 @@ pub const Canvas = struct {
 
     pub fn closeScope(self: *Self) void {
         const element = self.current.?;
-
-        var main_cursor: f32 = 0;
-        var cross_cursor: f32 = 0;
-        var line_cross_max: f32 = 0;
-
-        const main_max = switch (element.layout) {
-            .LeftToRight => switch (element.sizing.width) {
-                .fixed => |v| v.value,
-                .fit => |v| v.max,
-            },
-            .TopToBottom => switch (element.sizing.height) {
-                .fixed => |v| v.value,
-                .fit => |v| v.max,
-            },
-        };
-
-        for (element.children.items) |*child| {
-            const child_main = switch (element.layout) {
-                .LeftToRight => child.sizing.width.unpackDimension(),
-                .TopToBottom => child.sizing.height.unpackDimension(),
-            };
-
-            const child_cross = switch (element.layout) {
-                .LeftToRight => child.sizing.height.unpackDimension(),
-                .TopToBottom => child.sizing.width.unpackDimension(),
-            };
-
-            if (main_cursor > 0 and main_cursor + child_main > main_max) {
-                cross_cursor += line_cross_max + element.gap;
-                main_cursor = 0;
-                line_cross_max = 0;
-            }
-
-            main_cursor += child_main + element.gap;
-            line_cross_max = @max(line_cross_max, child_cross);
-        }
-
-        // finalize last line
-        cross_cursor += line_cross_max;
 
         const paddingH = element.padding.top + element.padding.bottom;
         const paddingW = element.padding.left + element.padding.right;
@@ -221,20 +271,24 @@ pub const Canvas = struct {
                     switch (parent.sizing.width) {
                         .fit => parent.sizing.width.fit.value += w,
                         .fixed => {},
+                        .grow => {},
                     }
                     switch (parent.sizing.height) {
                         .fit => parent.sizing.height.fit.value = @max(parent.sizing.height.fit.value, h),
                         .fixed => {},
+                        .grow => {},
                     }
                 },
                 .TopToBottom => {
                     switch (parent.sizing.height) {
                         .fit => parent.sizing.height.fit.value += h,
                         .fixed => {},
+                        .grow => {},
                     }
                     switch (parent.sizing.width) {
                         .fit => parent.sizing.width.fit.value = @max(parent.sizing.width.fit.value, w),
                         .fixed => {},
+                        .grow => {},
                     }
                 },
             }
@@ -246,8 +300,114 @@ pub const Canvas = struct {
     pub fn reset(self: *Self) void {
         _ = self.arena.reset(.retain_capacity);
         self.drawStack = .empty;
+        self.growStack = .empty;
         self.root = null;
         self.current = null;
+    }
+
+    fn grow(self: *Self, xAxis: bool) void {
+        if (self.root == null) return;
+
+        self.drawStack.append(self.arena.allocator(), .{
+            .box = &self.root.?,
+            .elementPosition = self.root.?.position,
+            .cursorPosition = .init(
+                self.root.?.padding.left,
+                self.root.?.padding.top,
+            ),
+        }) catch unreachable;
+
+        self.growStack.clearRetainingCapacity();
+        while (self.drawStack.items.len > 0) {
+            const box = self.drawStack.pop().?.box;
+
+            const sizingAlongAxis = (xAxis and box.layout == .LeftToRight) or (!xAxis and box.layout == .TopToBottom);
+            const parentSize = if (xAxis) box.sizing.width.unpackDimension() else box.sizing.height.unpackDimension();
+            const parentPadding: f32 = if (xAxis) (box.padding.left + box.padding.right) else (box.padding.top + box.padding.bottom);
+            var innerContentSize: f32 = 0;
+            var totalPaddingAndChildGaps: f32 = parentPadding;
+            const parentGap: f32 = box.gap;
+            var growContainerAmount: i32 = 0;
+
+            // Calculate children bounds
+            for (box.children.items, 0..box.children.items.len) |*child, index| {
+                const childSizing = if (xAxis) child.sizing.width else child.sizing.height;
+
+                if (childSizing == .grow) {
+                    self.growStack.append(self.arena.allocator(), child) catch unreachable;
+                    growContainerAmount += 1;
+                }
+
+                self.drawStack.append(self.arena.allocator(), .{ .box = child, .elementPosition = .empty, .cursorPosition = .empty }) catch unreachable;
+
+                if (sizingAlongAxis) {
+                    innerContentSize += childSizing.unpackDimension(); // or 0 when sizing is percent
+                    if (index > 0) {
+                        innerContentSize += parentGap;
+                        totalPaddingAndChildGaps += parentGap;
+                    }
+                } else {
+                    innerContentSize = @max(childSizing.unpackDimension(), innerContentSize);
+                }
+            }
+            if (sizingAlongAxis) {
+                var sizeToDistribute = parentSize - parentPadding - innerContentSize;
+                // Children size is larger then element size. Shrink if possible;
+                if (sizeToDistribute < 0) {} else if (growContainerAmount > 0) {
+                    while (sizeToDistribute > 0.0001 and self.growStack.items.len > 0) {
+                        var smallest: f32 = std.math.floatMax(f32);
+                        var secondSmallest: f32 = smallest;
+                        var widthToAdd = sizeToDistribute;
+
+                        for (self.growStack.items) |growableElement| {
+                            const childSizing = if (xAxis) growableElement.sizing.width.unpackDimension() else growableElement.sizing.height.unpackDimension();
+                            if (std.math.approxEqAbs(f32, childSizing, smallest, 0.01)) continue;
+
+                            if (childSizing < smallest) {
+                                secondSmallest = smallest;
+                                smallest = childSizing;
+                            }
+                            if (childSizing > smallest) {
+                                secondSmallest = @min(secondSmallest, childSizing);
+                                widthToAdd = secondSmallest - smallest;
+                            }
+                        }
+                        widthToAdd = @min(widthToAdd, sizeToDistribute / @as(f32, @floatFromInt(self.growStack.items.len)));
+
+                        var i: usize = 0;
+                        while (i < self.growStack.items.len) {
+                            const growableElement = self.growStack.items[i];
+                            var childSizing = if (xAxis) &growableElement.sizing.width else &growableElement.sizing.height;
+                            const maxSize = if (xAxis) growableElement.sizing.width.unpackMax() else growableElement.sizing.height.unpackMax();
+                            const previousSize = childSizing.unpackDimension();
+
+                            if (std.math.approxEqAbs(f32, childSizing.unpackDimension(), smallest, 0.01)) {
+                                childSizing.* = childSizing.add(widthToAdd);
+                                if (childSizing.unpackDimension() >= maxSize) {
+                                    childSizing.* = childSizing.set(maxSize);
+                                    // Remove this element from growth candidates
+                                    _ = self.growStack.swapRemove(i);
+                                    i -= 1; // Adjust index since we removed an item
+                                }
+                                sizeToDistribute -= (childSizing.unpackDimension() - previousSize);
+                            }
+                            i += 1;
+                        }
+                    }
+                }
+            } else {
+                for (self.growStack.items) |growableElement| {
+                    var childSizing = if (xAxis) &growableElement.sizing.width else &growableElement.sizing.height;
+                    const minSize = if (xAxis) growableElement.sizing.width.unpackMin() else growableElement.sizing.height.unpackMin();
+                    const maxSize = parentSize - parentPadding;
+
+                    if (childSizing.* == .grow) {
+                        childSizing.* = childSizing.set(@min(maxSize, childSizing.unpackMax()));
+                    }
+                    childSizing.* = childSizing.set(@max(minSize, @min(childSizing.unpackDimension(), maxSize)));
+                }
+            }
+        }
     }
 
     pub fn draw(self: *Self) void {
@@ -278,50 +438,12 @@ pub const Canvas = struct {
             );
 
             var cursor = item.cursorPosition;
-            var line_cross_max: f32 = 0;
-
-            const main_limit: f32 = switch (box.layout) {
-                .LeftToRight => switch (box.sizing.width) {
-                    .fixed => |v| v.value,
-                    .fit => |v| v.max,
-                },
-                .TopToBottom => switch (box.sizing.height) {
-                    .fixed => |v| v.value,
-                    .fit => |v| v.max,
-                },
-            };
-
-            const initial_cursor = cursor;
 
             for (box.children.items) |*child| {
                 const child_main = switch (box.layout) {
                     .LeftToRight => child.sizing.width.unpackDimension(),
                     .TopToBottom => child.sizing.height.unpackDimension(),
                 };
-
-                const child_cross = switch (box.layout) {
-                    .LeftToRight => child.sizing.height.unpackDimension(),
-                    .TopToBottom => child.sizing.width.unpackDimension(),
-                };
-
-                const current_main = switch (box.layout) {
-                    .LeftToRight => cursor.x - initial_cursor.x,
-                    .TopToBottom => cursor.y - initial_cursor.y,
-                };
-
-                if (current_main > 0 and current_main + child_main > main_limit) {
-                    switch (box.layout) {
-                        .LeftToRight => {
-                            cursor.x = initial_cursor.x;
-                            cursor.y += line_cross_max + box.gap;
-                        },
-                        .TopToBottom => {
-                            cursor.y = initial_cursor.y;
-                            cursor.x += line_cross_max + box.gap;
-                        },
-                    }
-                    line_cross_max = 0;
-                }
 
                 self.drawStack.append(self.arena.allocator(), .{
                     .box = child,
@@ -336,8 +458,6 @@ pub const Canvas = struct {
                     .LeftToRight => cursor.x += child_main + box.gap,
                     .TopToBottom => cursor.y += child_main + box.gap,
                 }
-
-                line_cross_max = @max(line_cross_max, child_cross);
             }
         }
     }
