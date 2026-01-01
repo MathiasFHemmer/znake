@@ -7,6 +7,12 @@ const Layout = enum {
     TopToBottom,
 };
 
+pub const Anchor = enum {
+    TopLeft,
+    TopCenter,
+    TopRight,
+};
+
 pub const Constrain = struct {
     const Self = @This();
 
@@ -158,6 +164,7 @@ pub const Box = struct {
     padding: Padding = .{},
     gap: f32 = 0,
     layout: Layout = .LeftToRight,
+    anchor: Anchor = .TopLeft,
 
     // Appearence:
     color: rl.Color = rl.Color.pink,
@@ -307,6 +314,7 @@ pub const Canvas = struct {
 
     fn grow(self: *Self, xAxis: bool) void {
         if (self.root == null) return;
+        self.drawStack.clearRetainingCapacity();
 
         self.drawStack.append(self.arena.allocator(), .{
             .box = &self.root.?,
@@ -317,8 +325,8 @@ pub const Canvas = struct {
             ),
         }) catch unreachable;
 
-        self.growStack.clearRetainingCapacity();
         while (self.drawStack.items.len > 0) {
+            self.growStack.clearRetainingCapacity();
             const box = self.drawStack.pop().?.box;
 
             const sizingAlongAxis = (xAxis and box.layout == .LeftToRight) or (!xAxis and box.layout == .TopToBottom);
@@ -354,7 +362,7 @@ pub const Canvas = struct {
                 var sizeToDistribute = parentSize - parentPadding - innerContentSize;
                 // Children size is larger then element size. Shrink if possible;
                 if (sizeToDistribute < 0) {} else if (growContainerAmount > 0) {
-                    while (sizeToDistribute > 0.0001 and self.growStack.items.len > 0) {
+                    while (sizeToDistribute > 0.01 and self.growStack.items.len > 0) {
                         var smallest: f32 = std.math.floatMax(f32);
                         var secondSmallest: f32 = smallest;
                         var widthToAdd = sizeToDistribute;

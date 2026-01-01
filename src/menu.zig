@@ -67,8 +67,8 @@ pub const MenuScene = struct {
         self.ui.openScope(ui.Box.init(.{
             .layout = .TopToBottom,
             .sizing = .{
-                .width = .{ .fit = .{ .min = 650, .max = 650 } },
-                .height = .{ .fit = .{ .min = 650 } },
+                .width = .{ .fit = .{ .min = if (self.do) 350 else 650, .max = if (self.do) 350 else 650 } },
+                .height = .{ .fit = .{ .min = if (self.do) 350 else 650, .max = if (self.do) 350 else 650 } },
             },
             .padding = .{ .bottom = 4, .left = 4, .right = 5, .top = 10 },
             .gap = 2,
@@ -84,13 +84,12 @@ pub const MenuScene = struct {
             }));
             self.ui.closeScope();
 
-            if (self.do) {
-                self.ui.openScope(ui.Box.init(.{
-                    .sizing = .{ .width = .{ .fixed = .{ .value = 100 } }, .height = .{ .grow = .{ .value = 0 } } },
-                    .color = rl.Color.red,
-                }));
-                self.ui.closeScope();
-            }
+            if (self.do) {}
+            self.ui.openScope(ui.Box.init(.{
+                .sizing = .{ .width = .{ .fit = .{ .value = 100 } }, .height = .{ .grow = .{ .value = 0 } } },
+                .color = rl.Color.red,
+            }));
+            self.ui.closeScope();
             if (self.do2) {
                 self.ui.openScope(ui.Box.init(.{
                     .sizing = .{ .width = .{ .fixed = .{ .value = 250 } }, .height = .{ .fixed = .{ .value = 250 } } },
