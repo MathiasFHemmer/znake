@@ -65,7 +65,7 @@ pub const MenuScene = struct {
 
         self.ui.beginLayout();
         self.ui.openScope(ui.Box.init(.{
-            .layout = .TopToBottom,
+            .layout = .LeftToRight,
             .sizing = .{
                 .width = .{ .fit = .{ .min = if (self.do) 350 else 650, .max = if (self.do) 350 else 650 } },
                 .height = .{ .fit = .{ .min = if (self.do) 350 else 650, .max = if (self.do) 350 else 650 } },
@@ -86,7 +86,9 @@ pub const MenuScene = struct {
 
             if (self.do) {}
             self.ui.openScope(ui.Box.init(.{
-                .sizing = .{ .width = .{ .fit = .{ .value = 100 } }, .height = .{ .grow = .{ .value = 0 } } },
+                .sizing = .{ .width = .{ .grow = .{
+                    .value = 0,
+                } }, .height = .{ .fit = .{ .value = 100 } } },
                 .color = rl.Color.red,
             }));
             self.ui.closeScope();

@@ -176,6 +176,7 @@ pub const Box = struct {
             sizing: Sizing = .{},
             padding: Padding = .{},
             gap: f32 = 0,
+            anchor: Anchor = .TopLeft,
             color: rl.Color = rl.Color.pink,
         },
     ) Self {
@@ -187,6 +188,7 @@ pub const Box = struct {
             .sizing = opt.sizing,
             .padding = opt.padding,
             .gap = opt.gap,
+            .anchor = opt.anchor,
             .color = opt.color,
         };
     }
@@ -393,9 +395,8 @@ pub const Canvas = struct {
                                 childSizing.* = childSizing.add(widthToAdd);
                                 if (childSizing.unpackDimension() >= maxSize) {
                                     childSizing.* = childSizing.set(maxSize);
-                                    // Remove this element from growth candidates
                                     _ = self.growStack.swapRemove(i);
-                                    i -= 1; // Adjust index since we removed an item
+                                    i -= 1;
                                 }
                                 sizeToDistribute -= (childSizing.unpackDimension() - previousSize);
                             }
@@ -447,8 +448,28 @@ pub const Canvas = struct {
 
             var cursor = item.cursorPosition;
 
+            // Calculate alignment offset for LeftToRight layout
+            if (box.layout == .LeftToRight and box.children.items.len > 0) {
+                var totalChildWidth: f32 = 0;
+                for (box.children.items, 0..box.children.items.len) |*child, index| {
+                    totalChildWidth += child.sizing.width.unpackDimension();
+                    if (index > 0) {
+                        totalChildWidth += box.gap;
+                    }
+                }
+
+                const availableWidth = box.sizing.width.unpackDimension() - box.padding.left - box.padding.right;
+                const alignmentOffset = switch (box.anchor) {
+                    .TopLeft => 0, // Left alignment - no offset
+                    .TopCenter => (availableWidth - totalChildWidth) / 2, // Center alignment
+                    .TopRight => availableWidth - totalChildWidth, // Right alignment
+                };
+
+                cursor.x += alignmentOffset;
+            }
+
             for (box.children.items) |*child| {
-                const child_main = switch (box.layout) {
+                const childMain = switch (box.layout) {
                     .LeftToRight => child.sizing.width.unpackDimension(),
                     .TopToBottom => child.sizing.height.unpackDimension(),
                 };
@@ -463,8 +484,8 @@ pub const Canvas = struct {
                 }) catch unreachable;
 
                 switch (box.layout) {
-                    .LeftToRight => cursor.x += child_main + box.gap,
-                    .TopToBottom => cursor.y += child_main + box.gap,
+                    .LeftToRight => cursor.x += childMain + box.gap,
+                    .TopToBottom => cursor.y += childMain + box.gap,
                 }
             }
         }
