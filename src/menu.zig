@@ -60,56 +60,80 @@ pub const MenuScene = struct {
         _ = alphaDt;
         rl.clearBackground(rl.Color.black);
     }
+
+    pub fn clickHandler(data: ?*anyopaque) void {
+        const scene = @as(*MenuScene, @ptrCast(@alignCast(data.?)));
+        scene.sceneManager.scheduleSceneSwitch("game") catch unreachable;
+    }
+
+    pub fn exitHandler(data: ?*anyopaque) void {
+        const scene = @as(*MenuScene, @ptrCast(@alignCast(data.?)));
+        scene.sceneManager.setExit();
+    }
+
     pub fn renderUI(self: *MenuScene) !void {
         self.ui.syncScreenSize(@floatFromInt(rl.getScreenWidth()), @floatFromInt(rl.getScreenHeight()));
-
+        self.ui.syncMouseState(.{ .poistion = .fromRLVector2(rl.getMousePosition()), .pressed = rl.isMouseButtonDown(.left), .released = rl.isMouseButtonReleased(.left) });
         self.ui.beginLayout();
         self.ui.openScope(ui.Box.init(.{
-            .layout = .LeftToRight,
             .sizing = .{
-                .width = .{ .fit = .{ .min = if (self.do) 350 else 650, .max = if (self.do) 350 else 650 } },
-                .height = .{ .fit = .{ .min = if (self.do) 350 else 650, .max = if (self.do) 350 else 650 } },
+                .height = .{ .grow = .{ .value = 0 } },
+                .width = .{ .grow = .{ .value = 0 } },
             },
-            .padding = .{ .bottom = 4, .left = 4, .right = 5, .top = 10 },
-            .gap = 2,
-            .color = rl.Color.dark_purple,
         }));
-        {
-            self.ui.openScope(ui.Box.init(.{
-                .sizing = .{
-                    .width = .{ .fixed = .{ .value = 200 } },
-                    .height = .{ .fixed = .{ .value = 200 } },
-                },
-                .color = rl.Color.blue,
-            }));
-            self.ui.closeScope();
-
-            if (self.do) {}
-            self.ui.openScope(ui.Box.init(.{
-                .sizing = .{ .width = .{ .grow = .{
-                    .value = 0,
-                } }, .height = .{ .fit = .{ .value = 100 } } },
-                .color = rl.Color.red,
-            }));
-            self.ui.closeScope();
-            if (self.do2) {
-                self.ui.openScope(ui.Box.init(.{
-                    .sizing = .{ .width = .{ .fixed = .{ .value = 250 } }, .height = .{ .fixed = .{ .value = 250 } } },
-                    .color = rl.Color.green,
-                }));
-                self.ui.closeScope();
-            }
-
-            for (0..self.counter) |index| {
-                self.ui.openScope(ui.Box.init(.{
-                    .layout = .TopToBottom,
-                    .sizing = .{ .width = .{ .fixed = .{ .value = 50 } }, .height = .{ .fixed = .{ .value = 50 } } },
-                    .color = rl.Color.gold.fade(@as(f32, @floatFromInt(20 - index)) / 20.0),
-                }));
-                self.ui.closeScope();
-            }
-        }
         self.ui.closeScope();
+
+        self.ui.openScope(ui.Box.init(.{
+            .layout = .TopToBottom,
+            .sizing = .{
+                .height = .{ .grow = .{ .value = 0 } },
+                .width = .{ .grow = .{ .value = 0 } },
+            },
+            .gap = 8,
+        }));
+        self.ui.openScope(ui.Box.init(.{
+            .sizing = .{
+                .height = .{ .grow = .{ .value = 0 } },
+                .width = .{ .grow = .{ .value = 0 } },
+            },
+        }));
+        self.ui.closeScope();
+        self.ui.openScope(ui.Box.init(.{
+            .sizing = .{
+                .height = .{ .fixed = .{ .value = 60 } },
+                .width = .{ .grow = .{ .value = 100 } },
+            },
+            .color = rl.Color.gold,
+            .onClick = clickHandler,
+            .onClickPayload = self,
+        }));
+        self.ui.closeScope();
+        self.ui.openScope(ui.Box.init(.{
+            .sizing = .{
+                .height = .{ .fixed = .{ .value = 60 } },
+                .width = .{ .grow = .{ .value = 100 } },
+            },
+            .color = rl.Color.gold,
+            .onClick = exitHandler,
+            .onClickPayload = self,
+        }));
+        self.ui.closeScope();
+        self.ui.openScope(ui.Box.init(.{
+            .sizing = .{
+                .height = .{ .grow = .{ .value = 0 } },
+                .width = .{ .grow = .{ .value = 0 } },
+            },
+        }));
+        self.ui.closeScope();
+        self.ui.closeScope();
+        self.ui.openScope(ui.Box.init(.{
+            .sizing = .{
+                .height = .{ .grow = .{ .value = 0 } },
+                .width = .{ .grow = .{ .value = 0 } },
+            },
+        }));
+        self.ui.closeScope();
+
         self.ui.endLayout();
     }
     pub fn exit(self: *MenuScene) void {

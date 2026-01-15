@@ -167,7 +167,12 @@ pub const Box = struct {
     anchor: Anchor = .TopLeft,
 
     // Appearence:
-    color: rl.Color = rl.Color.pink,
+    visible: bool = true,
+    color: ?rl.Color = null,
+
+    // Interaction:
+    onClickPayload: ?*anyopaque = null,
+    onClick: ?*const fn (?*anyopaque) void,
 
     pub fn init(
         opt: struct {
@@ -177,7 +182,10 @@ pub const Box = struct {
             padding: Padding = .{},
             gap: f32 = 0,
             anchor: Anchor = .TopLeft,
-            color: rl.Color = rl.Color.pink,
+            visible: bool = true,
+            color: ?rl.Color = null,
+            onClick: ?*const fn (?*anyopaque) void = null,
+            onClickPayload: ?*anyopaque = null,
         },
     ) Self {
         return Self{
@@ -190,10 +198,21 @@ pub const Box = struct {
             .gap = opt.gap,
             .anchor = opt.anchor,
             .color = opt.color,
+            .visible = opt.visible,
+            .onClick = opt.onClick,
+            .onClickPayload = opt.onClickPayload,
         };
     }
 
     pub const empty: Self = .{};
+};
+
+pub const MouseState = struct {
+    poistion: Position = .empty,
+    pressed: bool = false,
+    released: bool = false,
+
+    pub const empty = .{};
 };
 
 pub const Canvas = struct {
@@ -207,21 +226,21 @@ pub const Canvas = struct {
 
     screenWidth: f32 = 0,
     screenHeight: f32 = 0,
+    mouseState: MouseState = .{},
 
     arena: std.heap.ArenaAllocator,
-    growStack: std.ArrayList(*Box),
-    drawStack: std.ArrayList(StackItem),
+    growStack: std.ArrayList(*Box) = .{},
+    drawStack: std.ArrayList(StackItem) = .{},
 
-    root: ?Box,
-    current: ?*Box,
+    root: ?Box = null,
+    current: ?*Box = null,
+
+    hotElement: ?*Box = null,
+    startInteractionElement: ?*Box = null,
 
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .arena = std.heap.ArenaAllocator.init(allocator),
-            .drawStack = .empty,
-            .growStack = .empty,
-            .current = null,
-            .root = null,
         };
     }
 
@@ -230,11 +249,19 @@ pub const Canvas = struct {
         self.screenWidth = w;
     }
 
+    pub fn syncMouseState(self: *Self, mouseState: MouseState) void {
+        self.mouseState = mouseState;
+    }
+
     pub fn beginLayout(self: *Self) void {
         self.reset();
 
         self.openScope(.init(.{
-            .sizing = .{ .width = .{ .fixed = .{ .value = self.screenWidth } }, .height = .{ .fixed = .{ .value = self.screenHeight } } },
+            .sizing = .{
+                .width = .{ .fixed = .{ .value = self.screenWidth } },
+                .height = .{ .fixed = .{ .value = self.screenHeight } },
+            },
+            .visible = false,
         }));
     }
 
@@ -243,6 +270,7 @@ pub const Canvas = struct {
         self.grow(true);
         self.grow(false);
         self.draw();
+        self.handleInteraction();
     }
 
     pub fn openScope(self: *Self, element: Box) void {
@@ -312,6 +340,7 @@ pub const Canvas = struct {
         self.growStack = .empty;
         self.root = null;
         self.current = null;
+        self.hotElement = null;
     }
 
     fn grow(self: *Self, xAxis: bool) void {
@@ -438,13 +467,22 @@ pub const Canvas = struct {
             const box_width = box.sizing.width.unpackDimension();
             const box_height = box.sizing.height.unpackDimension();
 
-            rl.drawRectangle(
-                @intFromFloat(item.elementPosition.x),
-                @intFromFloat(item.elementPosition.y),
-                @intFromFloat(box_width),
-                @intFromFloat(box_height),
-                box.color,
-            );
+            if (box.visible and box.color != null) {
+                rl.drawRectangle(
+                    @intFromFloat(item.elementPosition.x),
+                    @intFromFloat(item.elementPosition.y),
+                    @intFromFloat(box_width),
+                    @intFromFloat(box_height),
+                    box.color.?,
+                );
+            }
+
+            const isInX = self.mouseState.poistion.x >= item.elementPosition.x and self.mouseState.poistion.x <= (item.elementPosition.x + box_width);
+            const isInY = self.mouseState.poistion.y >= item.elementPosition.y and self.mouseState.poistion.y <= (item.elementPosition.y + box_height);
+
+            if (isInX and isInY) {
+                self.hotElement = box;
+            }
 
             var cursor = item.cursorPosition;
 
@@ -488,6 +526,21 @@ pub const Canvas = struct {
                     .TopToBottom => cursor.y += childMain + box.gap,
                 }
             }
+        }
+    }
+
+    pub fn handleInteraction(self: *Canvas) void {
+        if (self.mouseState.pressed) {
+            self.startInteractionElement = self.hotElement;
+        }
+
+        if (self.mouseState.released) {
+            if (self.startInteractionElement != null and self.startInteractionElement == self.hotElement) {
+                if (self.startInteractionElement.?.onClick) |onClickHandler| {
+                    onClickHandler(self.startInteractionElement.?.onClickPayload);
+                }
+            }
+            self.startInteractionElement = null;
         }
     }
 };

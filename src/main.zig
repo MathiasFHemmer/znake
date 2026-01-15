@@ -47,10 +47,8 @@ pub fn main() !void {
         sceneManager.current.update();
 
         rl.beginDrawing();
-
         try sceneManager.current.render(alphaDt);
         try sceneManager.current.renderUI();
-
         rl.endDrawing();
 
         try sceneManager.performSwitch();

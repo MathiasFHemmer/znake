@@ -83,7 +83,7 @@ pub const GameScene = struct {
         Systems.checkAppleEat(self.snake, &self.world);
     }
     pub fn update(self: *GameScene) void {
-        if (rl.isKeyPressed(rl.KeyboardKey.escape)) {
+        if (rl.isKeyPressed(rl.KeyboardKey.p)) {
             self.showMenu = !self.showMenu;
         }
 
@@ -142,11 +142,13 @@ pub const GameScene = struct {
         }
 
         self.camera.target = self.world.getComponent(self.snake, Components.Transform).?.position;
-        self.camera.position = self.world.getComponent(self.snake, Components.Transform).?.position.add(.init(0, 10, 0));
+        self.camera.position = self.camera.target.add(.init(0, 10, 0));
     }
     pub fn render(self: *GameScene, alphaDt: f32) !void {
         rl.beginTextureMode(self.mainTexture);
         rl.clearBackground(rl.Color.black);
+
+        rl.drawFPS(10, 10);
 
         rl.beginMode3D(self.camera);
 
@@ -155,13 +157,94 @@ pub const GameScene = struct {
         rl.endMode3D();
         rl.endTextureMode();
         // rl.beginShaderMode(self.snake.fowShader);
-        rl.drawTextureRec(self.mainTexture.texture, .init(0, 0, 1920, -1080), .init(0, 0), .white);
-        rl.endShaderMode();
+        const screenWidth = rl.getScreenWidth();
+        const screenHeight = rl.getScreenHeight();
+        const screenWidthF = @as(f32, @floatFromInt(screenWidth));
+        const screenHeightF = @as(f32, @floatFromInt(screenHeight));
 
-        drawWorldAxes(self.camera);
+        // Calculate scale to maintain aspect ratio (texture is 1920x1080 = 16:9)
+        const scaleX = screenWidthF / 1920.0;
+        const scaleY = screenHeightF / 1080.0;
+        const scale = @min(scaleX, scaleY);
+
+        // Calculate scaled dimensions
+        const scaledWidth = 1920.0 * scale;
+        const scaledHeight = 1080.0 * scale;
+
+        // Center the scaled texture on screen
+        const offsetX = (screenWidthF - scaledWidth) / 2.0;
+        const offsetY = (screenHeightF - scaledHeight) / 2.0;
+
+        rl.drawTexturePro(
+            self.mainTexture.texture,
+            rl.Rectangle{ .x = 0, .y = 0, .width = 1920, .height = -1080 },
+            rl.Rectangle{ .x = offsetX, .y = offsetY, .width = scaledWidth, .height = scaledHeight },
+            rl.Vector2{ .x = 0, .y = 0 },
+            0,
+            rl.Color.white,
+        );
+        rl.endShaderMode();
+    }
+
+    fn clickHandler(data: ?*anyopaque) void {
+        var scene = @as(*Self, @ptrCast(@alignCast(data.?)));
+
+        scene.showMenu = false;
     }
     pub fn renderUI(self: *GameScene) !void {
-        _ = self;
+        if (!self.showMenu) return;
+        self.ui.syncScreenSize(@floatFromInt(rl.getScreenWidth()), @floatFromInt(rl.getScreenHeight()));
+        self.ui.syncMouseState(.{ .poistion = .fromRLVector2(rl.getMousePosition()), .pressed = rl.isMouseButtonDown(.left), .released = rl.isMouseButtonReleased(.left) });
+        self.ui.beginLayout();
+        self.ui.openScope(ui.Box.init(.{
+            .sizing = .{
+                .height = .{ .grow = .{ .value = 0 } },
+                .width = .{ .grow = .{ .value = 0 } },
+            },
+        }));
+        self.ui.closeScope();
+
+        self.ui.openScope(ui.Box.init(.{
+            .layout = .TopToBottom,
+            .sizing = .{
+                .height = .{ .grow = .{ .value = 0 } },
+                .width = .{ .grow = .{ .value = 0 } },
+            },
+        }));
+        self.ui.openScope(ui.Box.init(.{
+            .sizing = .{
+                .height = .{ .grow = .{ .value = 0 } },
+                .width = .{ .grow = .{ .value = 0 } },
+            },
+        }));
+        self.ui.closeScope();
+        self.ui.openScope(ui.Box.init(.{
+            .sizing = .{
+                .height = .{ .fixed = .{ .value = 60 } },
+                .width = .{ .grow = .{ .value = 100 } },
+            },
+            .color = rl.Color.gold,
+            .onClick = clickHandler,
+            .onClickPayload = self,
+        }));
+        self.ui.closeScope();
+        self.ui.openScope(ui.Box.init(.{
+            .sizing = .{
+                .height = .{ .grow = .{ .value = 0 } },
+                .width = .{ .grow = .{ .value = 0 } },
+            },
+        }));
+        self.ui.closeScope();
+        self.ui.closeScope();
+        self.ui.openScope(ui.Box.init(.{
+            .sizing = .{
+                .height = .{ .grow = .{ .value = 0 } },
+                .width = .{ .grow = .{ .value = 0 } },
+            },
+        }));
+        self.ui.closeScope();
+
+        self.ui.endLayout();
     }
     pub fn exit(self: *GameScene) void {
         _ = self;
@@ -174,13 +257,11 @@ pub const GameScene = struct {
         const axisLength: f32 = 10.0;
         const origin = rl.Vector3.zero();
         // std.time.sleep(1000 * 1000 * 100);
-        rl.beginMode3D(camera);
 
         rl.drawLine3D(origin, rl.Vector3{ .x = axisLength, .y = 0, .z = 0 }, rl.Color.red);
         rl.drawLine3D(origin, rl.Vector3{ .x = 0, .y = axisLength, .z = 0 }, rl.Color.green);
         rl.drawLine3D(origin, rl.Vector3{ .x = 0, .y = 0, .z = axisLength }, rl.Color.blue);
 
-        rl.endMode3D();
         rl.drawFPS(10, 10);
         drawAxisLabel(rl.Vector3{ .x = axisLength + 0.5, .y = 0, .z = 0 }, "X", rl.Color.red, camera);
         drawAxisLabel(rl.Vector3{ .x = 0, .y = axisLength + 0.5, .z = 0 }, "Y", rl.Color.green, camera);
