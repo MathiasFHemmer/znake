@@ -148,13 +148,14 @@ pub const GameScene = struct {
         rl.beginTextureMode(self.mainTexture);
         rl.clearBackground(rl.Color.black);
 
-        rl.drawFPS(10, 10);
-
         rl.beginMode3D(self.camera);
 
         Systems.drawMeshSystem(&self.world, alphaDt);
 
+        drawWorldAxes(self.camera);
         rl.endMode3D();
+        rl.drawFPS(10, 10);
+
         rl.endTextureMode();
         // rl.beginShaderMode(self.snake.fowShader);
         const screenWidth = rl.getScreenWidth();
@@ -183,7 +184,7 @@ pub const GameScene = struct {
             0,
             rl.Color.white,
         );
-        rl.endShaderMode();
+        // rl.endShaderMode();
     }
 
     fn clickHandler(data: ?*anyopaque) void {
@@ -262,7 +263,6 @@ pub const GameScene = struct {
         rl.drawLine3D(origin, rl.Vector3{ .x = 0, .y = axisLength, .z = 0 }, rl.Color.green);
         rl.drawLine3D(origin, rl.Vector3{ .x = 0, .y = 0, .z = axisLength }, rl.Color.blue);
 
-        rl.drawFPS(10, 10);
         drawAxisLabel(rl.Vector3{ .x = axisLength + 0.5, .y = 0, .z = 0 }, "X", rl.Color.red, camera);
         drawAxisLabel(rl.Vector3{ .x = 0, .y = axisLength + 0.5, .z = 0 }, "Y", rl.Color.green, camera);
         drawAxisLabel(rl.Vector3{ .x = 0, .y = 0, .z = axisLength + 0.5 }, "Z", rl.Color.blue, camera);
